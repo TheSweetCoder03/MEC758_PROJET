@@ -1,9 +1,9 @@
 import numpy as np
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 cte_amb= {
-    "pa": 87260, # Pression atmosphérique à 1219m altitude en Pa
-    "ta": 38.7, # Température à 1219m altitude en degres celcius
+    "pa": 87560, # Pression atmosphérique à 1219m altitude en Pa
+    "ta": 37.8, # Température à 1219m altitude en degres celcius
     "va": 0, # Vitesse d'entrée en m/s
     "ve": 0, # Vitesse de sortie en m/s
 }
@@ -15,7 +15,7 @@ cte_comp= {
     "ncbp": 0.86, # Rendement du compresseur basse pression
     "rphp": 2.65, # Rapport de pression compresseur haute pression
     "nchp": 0.84, # Rendement du compresseur haute pression
-    "mpt": 5.443, # Débit d'air massique en kg/s
+    "mpt": 5.443, # Débit d'air massique total en kg/s
     "pap": 0.10, # Pourcentage d'air utilisé pour le refroidissement des turbines
 }
 
@@ -47,15 +47,17 @@ def Station_1 ():
     v1 = cte_amb["va"]
     cp = cte_comp["cpc"]
     y = cte_comp["yc"]
-    
+    s1 = 0 # Entropie de référence
+
     to1 = t1 + (v1**2) / (2 * cp)
     po1 = p1* (to1/t1)**(y/(y-1))
 
-    station[1] = {"Po": po1, "To": to1}
+    # Enregistrer les résultats de la station 1
+    station[1] = {"Po": po1, "To": to1, "s": s1}
 
-    return po1, to1
+    return po1, to1, s1
 
-def Station_2 (po1, to1):
+def Station_2 (po1, to1, s1):
     # Station 2 : Sortie du compresseur basse pression
     rpbp = cte_comp["rpbp"]
     ncbp = cte_comp["ncbp"]
@@ -70,11 +72,15 @@ def Station_2 (po1, to1):
 
     wlpc = mp * cp * (to2 - to1)
 
-    station[2] = {"Po": po2, "To": to2, "wlpc": wlpc}
+    r = cp * ((y-1)/y)
 
-    return po2, to2, wlpc
+    s2 = s1 + cp * np.log(to2/to1) - r * np.log(po2/po1)
 
-def Station_3 (po2, to2):
+    station[2] = {"Po": po2, "To": to2, "w": wlpc, "s": s2}
+
+    return po2, to2, wlpc, s2
+
+def Station_3 (po2, to2, s2):
     # Station 3 : Sortie du compresseur haute pression
     rphp = cte_comp["rphp"]
     nchp = cte_comp["nchp"]
@@ -88,11 +94,15 @@ def Station_3 (po2, to2):
 
     whpc = mp * cp * (to3 - to2)
 
-    station[3] = {"Po": po3, "To": to3, "whpc": whpc}
+    r = cp * ((y-1)/y)
 
-    return po3, to3, whpc
+    s3 = s2 + cp * np.log(to3/to2) - r * np.log(po3/po2)
 
-def Station_4 (po3, to3):
+    station[3] = {"Po": po3, "To": to3, "w": whpc, "s": s3}
+
+    return po3, to3, whpc, s3
+
+def Station_4 (po3, to3, s3):
     # Station 4 : Sortie de la chambre de combustion
     f = cte_cc["f"]
     qr = cte_cc["qr"]
@@ -100,92 +110,162 @@ def Station_4 (po3, to3):
     deltapcc = cte_cc["deltapcc"]
     cp4 = cte_cc["cpcc"]
     cp3 = cte_comp["cpc"]
-    mpt = cte_comp["mpt"]
-    pap = cte_comp["pap"]
+    y = cte_cc["ycc"]
 
-    mpr = mpt * (1 - pap) # Masse d'air réel passant par la CC
-
-    to4 = (f*qr*ncc+cp3*to3)//(cp4*(1+f))
+    to4 = (f*qr*ncc+cp3*to3)/(cp4*(1+f))
     po4 = po3 * (1 - deltapcc)
-    sfc = f / mpr
 
-    station[4] = {"Po": po4, "To": to4, "sfc": sfc}
+    r = cp4 * ((y-1)/y)
 
-    return po4, to4, mpr, sfc
+    s4 = s3 + cp4 * np.log(to4/to3) - r * np.log(po4/po3)
 
-def Station_5 (po4, to4,whpc, mpr):
+    station[4] = {"Po": po4, "To": to4, "s": s4}
+
+    return po4, to4, s4
+
+def Station_5 (po4, to4, whpc, s4):
     # Station 5 : Sortie de la turbine haute pression
     nthp = cte_turb["nthp"]
     y = cte_turb["yt"]
     cpt = cte_turb["cpt"]
-    cpc = cte_comp["cpc"]
+    mp = cte_comp["mpt"]
+    perte = cte_comp["pap"]
+    f = cte_cc["f"]
 
-    to5 = to4-(whpc/(mpr*cpt))
+    mpt = mp * (1 - perte) * (1 + f)
+
+    to5 = to4-(whpc/(mpt*cpt))
     to5s = to4 - (to4-to5)/nthp
     po5 = po4 * (to5s/to4)**(y/(y-1))
 
-    whpt = mpr * cpt * (to5 - to4)
+    whpt = mpt * cpt * (to4 - to5)
 
-    station[5] = {"Po": po5, "To": to5, "whpt": whpt}
+    r = cpt * ((y-1)/y)
 
-    return po5, to5, whpt, mpr
+    s5 = s4 + cpt * np.log(to5/to4) - r * np.log(po5/po4)
 
-def Station_6 (po5, to5, mpr, wlpc):
+    station[5] = {"Po": po5, "To": to5, "w": whpt, "s": s5}
+
+    return po5, to5, whpt, s5, mpt
+
+def Station_6 (po5, to5, wlpc, s5, to3, mpt):
     # Station 6 : Sortie de la turbine basse pression
     ntbp = cte_turb["ntbp"]
     y = cte_turb["yt"]
     cpt = cte_turb["cpt"]
     perte = cte_turb["deltapit"]
+    mp = cte_comp["mpt"]
+    pap = cte_comp["pap"]
+    cpc = cte_comp["cpc"]
+
+    mpf = mpt + mp * pap 
 
     po5p = po5 * (1 - perte)
+    to5u = (mpt * to5 * cpt + mp * pap * to3 * cpc)/ (mpf * cpt)
 
-    to6 = to5-(wlpc/(mpr*cpt))
-    to6s = to5 - (to5-to6)/ntbp
-    po6 = po5p * (to6s/to5)**(y/(y-1))
+    to6 = to5u-(wlpc/(mpf*cpt))
+    to6s = to5u - (to5u-to6)/ntbp
+    po6 = po5p * (to6s/to5u)**(y/(y-1))
 
-    wlpt = mpr * cpt * (to6 - to5)
+    wlpt = mpf * cpt * (to5u - to6)
 
-    station[6] = {"Po": po6, "To": to6, "wlpt": wlpt}
+    r = cpt * ((y-1)/y)
 
-    return po6, to6, wlpt
+    s6 = s5 + cpt * np.log(to6/to5u) - r * np.log(po6/po5)
 
-def Station_7 (po6, to6):
+    station[6] = {"Po": po6, "To": to6, "w": wlpt, "s": s6}
+
+    return po6, to6, wlpt, s6, mpf
+
+def Station_7 (po6, to6, s6, mpf):
     # Station 7 : Sortie de la turbine de puissance
     ntp = cte_turb["ntp"]
     y = cte_turb["yt"]
     cpt = cte_turb["cpt"]
-    perte_it = cte_turb["deltapet"]
     perte_et = cte_turb["deltapet"]
-    p7 = cte_amb["pa"]
+    pa = cte_amb["pa"]
+    f = cte_cc["f"]
+    mp = cte_comp["mpt"]
+    pap = cte_comp["pap"]
 
-    po6p = po6 * (1 - perte_it)
-    p7p = p7 * (1 + perte_et)
+    p7 = pa * (1 + perte_et)
 
-    t7s = to6 * (p7p/po6p)**((y-1)/y)
+    t7s = to6 * (p7/po6)**((y-1)/y)
     t7 = to6 - (to6-t7s)*ntp
 
-    wpt = cpt * (to6 - t7)
+    wpt = mpf * cpt * (to6 - t7)
     hp = wpt / 745.7
 
-    station[7] = {"Po": p7, "To": t7, "wpt": wpt, "hp": hp}
+    r = cpt * ((y-1)/y)
 
-    return p7, t7, wpt, hp
+    s7 = s6 + cpt * np.log(t7/to6) - r * np.log(p7/po6)
 
-def main():
-    print(f"{'Station':<10} | {'P (kPa)':<10} | {'T (K)':<10}")
+    mpcc = mp * (1 - pap)
+
+    sfc = (mpcc * f * 3600) / (wpt / 1000)
+
+    station[7] = {"Po": p7, "To": t7, "w": wpt, "hp": hp, "s": s7, "sfc": sfc}
+
+    return p7, t7, wpt, hp, s7, sfc
+
+def print_station():
+    print(f"{'Station':<10} | {'P (Pa)':<10} | {'T (K)':<10} | {'W (Watts)':<10}")
     print("-" * 34)
     for i in range(1, 8):
         if i in station:
-            print(f"{i:<10} | {station[i]['Po']:<10.2f} | {station[i]['To']:<10.2f}")
-    print(f"\nSFC: {station[4]['sfc']:.6f} kg/Ns")
+            if 'w' in station[i]:
+                print(f"{i:<10} | {station[i]['Po']:<10.2f} | {station[i]['To']:<10.2f} | {station[i]['w']:<10.2f}")
+            else:
+                print(f"{i:<10} | {station[i]['Po']:<10.2f} | {station[i]['To']:<10.2f} | {'N/A':<10}")
+    print(f"\nSFC: {station[7]['sfc']:.6f} kg/kW.h")
     print(f"Puissance de la turbine de puissance: {station[7]['hp']:.2f} HP")
 
+def plot_cycle():
+
+    s_vals = []
+    t_vals = []
+
+    for i in range(1,8):
+        if i in station:
+            
+            s_actuel = station[i]['s']
+            t_actuel = station[i]['To']
+
+            s_vals.append(s_actuel)
+            t_vals.append(t_actuel)
+    
+    plt.figure(1, figsize=(10, 6))
+    plt.plot(s_vals[0:3], t_vals[0:3], marker='o', linestyle='-', color='red', linewidth=2, label='Avant la C.C.')
+    plt.plot(s_vals[3:], t_vals[3:], marker='o', linestyle='-', color='blue', linewidth=2, label='Après la C.C.')
+
+    xmin, xmax = plt.xlim()
+
+    for i, (s, t) in enumerate(zip(s_vals, t_vals), start=1):
+        plt.annotate(f'Station {i}', (s, t), textcoords="offset points", xytext=(8,-5), ha='left')
+        plt.plot([xmin-10,s], [t, t], linestyle='--', color='gray', linewidth=1, alpha=0.5)
+        plt.text(xmin-10, t, f'To{i}', ha='right', va='center', fontsize=9, color='gray')
+    
+    plt.xlim(xmin, xmax)
+    plt.title('Diagramme T-s')
+    plt.xlabel('Entropie (s)')
+    plt.ylabel('Température de stagnation (To) [K]')
+    plt.grid(True, linestyle='--', alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+
+    plt.show()
+
+
+def main():
+    po1, to1, s1 = Station_1()
+    po2, to2, wlpc, s2 = Station_2(po1, to1, s1)
+    po3, to3, whpc, s3 = Station_3(po2, to2, s2)
+    po4, to4, s4 = Station_4(po3, to3, s3)
+    po5, to5, whpt, s5, mpt = Station_5(po4, to4, whpc, s4)
+    po6, to6, wlpt, s6, mpf = Station_6(po5, to5, wlpc, s5, to3, mpt)
+    p7, t7, wpt, hp, s7, sfc = Station_7(po6, to6, s6, mpf)
+    print_station()
+    plot_cycle()
+
 if __name__ == "__main__":
-    po1, to1 = Station_1()
-    po2, to2, wlpc = Station_2(po1, to1)
-    po3, to3, whpc = Station_3(po2, to2)
-    po4, to4, mpr, sfc = Station_4(po3, to3)
-    po5, to5, whpt, mpr = Station_5(po4, to4, whpc, mpr)
-    po6, to6, wlpt = Station_6(po5, to5, mpr, wlpc)
-    p7, t7, wpt, hp = Station_7(po6, to6)
     main()
