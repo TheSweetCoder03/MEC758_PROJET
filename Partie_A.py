@@ -209,7 +209,7 @@ def Station_7 (po6, to6, s6, mpf):
     return p7, t7, wpt, hp, s7, sfc
 
 def print_station():
-    print(f"{'Station':<10} | {'P (Pa)':<10} | {'T (K)':<10} | {'W (Watts)':<10}")
+    print(f"{'Station':<10} | {'Po (Pa)':<10} | {'To (K)':<10} | {'W (Watts)':<10}")
     print("-" * 34)
     for i in range(1, 8):
         if i in station:
@@ -266,6 +266,3 @@ def main():
     p7, t7, wpt, hp, s7, sfc = Station_7(po6, to6, s6, mpf)
     print_station()
     plot_cycle()
-
-if __name__ == "__main__":
-    main()
