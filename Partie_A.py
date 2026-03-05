@@ -271,10 +271,10 @@ def export_donnees_hpt():
     f = cte_cc["f"]
     mpt_calc = mp * (1 - perte) * (1 + f)
     donnees_hpt = {
-        'T01': station[4]['To'],                  
-        'P01': station[4]['Po'],                  
-        'T03': station[5]['To'],                  
-        'P03': station[5]['Po'],                  
+        'T04': station[4]['To'],                  
+        'P04': station[4]['Po'],                  
+        'T05': station[5]['To'],                  
+        'P05': station[5]['Po'],                  
         'm_dot': mpt_calc,                
         'W_hpt': station[5]['w'],               
         'cp': cte_turb["cpt"],       
