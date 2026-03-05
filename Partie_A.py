@@ -256,7 +256,7 @@ def plot_cycle():
     plt.show()
 
 
-def main():
+def calcul():
     po1, to1, s1 = Station_1()
     po2, to2, wlpc, s2 = Station_2(po1, to1, s1)
     po3, to3, whpc, s3 = Station_3(po2, to2, s2)
@@ -264,5 +264,3 @@ def main():
     po5, to5, whpt, s5, mpt = Station_5(po4, to4, whpc, s4)
     po6, to6, wlpt, s6, mpf = Station_6(po5, to5, wlpc, s5, to3, mpt)
     p7, t7, wpt, hp, s7, sfc = Station_7(po6, to6, s6, mpf)
-    print_station()
-    plot_cycle()
