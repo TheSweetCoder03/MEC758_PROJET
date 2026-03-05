@@ -25,119 +25,150 @@ contraintes = {
     'vie_heures': 300              # Durée de vie 
 }
 
-# --- Données de cycle fictives (À Remplacer par vos résultats de la Partie A) ---
-donnees_cycle = {
-    'gamma': 1.31,                 # Air chaud HPT 
-    'cp': 1214.0,                  # Air chaud HPT
-    'T03': 1300.0,                 # Température de stagnation sortie HPT (K) - ESTIMATION
-    'P03': 400000.0,               # Pression de stagnation sortie HPT (Pa) - ESTIMATION
-    'm_dot': 5.443 * (1 + 0.02 - 0.10), # Débit massique (ajusté fuel et refroidissement) 
-    'dh0_hpt': 350000.0,           # Travail spécifique requis par HPT (J/kg) - ESTIMATION PARTIE A
-    'eta_hpt': 0.88                # Efficacité HPT 
-}
-
 geom = {}      # Pour stocker A, r_root, r_tip, r_moyen
 vitesses = {}  # Pour stocker U, Va, Vw, etc.
 
 def deg2rad(angle):
     return angle * np.pi / 180.0
 
-def etape_1a(donnees_cycle):
-    print("--- Étape 1.a : Établissement de la vitesse de rotation et géométrie ---")
-    gamma = donnees_cycle['gamma']
-    R = donnees_cycle['cp'] * (gamma - 1) / gamma
+def etape_1(donnees_hpt, racine_constante=True, Va2_guess=150.0):
+    print(f"\nÉTAPES 1.a, 1.b, 1.c : Géométrie et Triangles")
+    print(f"Stratégie de veine : {'Racine Constante' if racine_constante else 'Bout (Tip) Constant'}")
     
-    # 1. Calcul des conditions statiques à la sortie
-    T03 = donnees_cycle['T03']
-    P03 = donnees_cycle['P03']
+    # Récupération des données
+    gamma = donnees_hpt['gamma']
+    R_gaz = donnees_hpt['cp'] * (gamma - 1) / gamma
+    m_dot = donnees_hpt['m_dot']
+    dh0 = donnees_hpt['dh0_hpt']
+    cp = donnees_hpt['cp']
+    
+    T01 = donnees_hpt['T01']
+    P01 = donnees_hpt['P01']
+    T03 = donnees_hpt['T03']
+    P03 = donnees_hpt['P03']
+
+    # 1. STATION 3 (Sortie Rotor - Base de la géométrie)
     M3 = contraintes['M3']
-    
     T3 = T03 / (1 + ((gamma - 1) / 2) * M3**2)
     P3 = P03 / ((1 + ((gamma - 1) / 2) * M3**2)**(gamma / (gamma - 1)))
-    rho3 = P3 / (R * T3)
-    
-    # Vitesse absolue V3 et sa composante axiale Va3
-    V3 = M3 * np.sqrt(gamma * R * T3)
+    rho3 = P3 / (R_gaz * T3)
+
+    V3 = M3 * np.sqrt(gamma * R_gaz * T3)
     alpha3_rad = deg2rad(contraintes['alpha_3'])
-    Va3 = V3 * np.cos(alpha3_rad) 
-    
-    # 2. Calcul de la surface A3
-    A3 = donnees_cycle['m_dot'] / (rho3 * Va3)
-    geom['A3'] = A3
-    geom['A2'] = A3 # Contrainte du cahier des charges : A2 = A3 [cite: 85]
-    
-    # 3. Choix du RPM (N) respectant le critère AN^2
+    Va3 = V3 * np.cos(alpha3_rad)
+    Vw3 = V3 * np.sin(alpha3_rad)
+
+    A3 = m_dot / (rho3 * Va3)
+
+    # Vitesse de rotation (N) basée sur Station 3
     AN2_cible = (contraintes['AN2_min'] + contraintes['AN2_max']) / 2.0
     N_rpm = np.sqrt(AN2_cible / A3)
     omega = (N_rpm * np.pi) / 30.0
-    
-    # 4. Choix de U_root
     U_root_cible = (contraintes['U_emplanture_min'] + contraintes['U_emplanture_max']) / 2.0
+
+    r_root3 = U_root_cible / omega
+    r_tip3 = np.sqrt((A3 / np.pi) + r_root3**2)
+    r_m3 = (r_root3 + r_tip3) / 2.0
+    U3 = omega * r_m3
+
+    # 2. STATION 1 (Entrée Stator)
+    M1 = contraintes['M1']
+    T1 = T01 / (1 + ((gamma - 1) / 2) * M1**2)
+    P1 = P01 / ((1 + ((gamma - 1) / 2) * M1**2)**(gamma / (gamma - 1)))
+    rho1 = P1 / (R_gaz * T1)
+
+    V1 = M1 * np.sqrt(gamma * R_gaz * T1)
+    alpha1_rad = deg2rad(contraintes['alpha_1'])
+    Va1 = V1 * np.cos(alpha1_rad)
+
+    A1 = m_dot / (rho1 * Va1)
+
+    if racine_constante:
+        r_root1 = r_root3
+        r_tip1 = np.sqrt((A1 / np.pi) + r_root1**2)
+    else:
+        r_tip1 = r_tip3
+        r_root1 = np.sqrt(r_tip1**2 - (A1 / np.pi))
+        
+    r_m1 = (r_root1 + r_tip1) / 2.0
+    U1 = omega * r_m1
+
+    # 3. STATION 2 (Solveur Itératif pour Va2 et géométrie)
+    Va2 = Va2_guess
+    r_m2 = r_m3 # Hypothèse de départ
     
-    # 5. Détermination des rayons
-    r_root = U_root_cible / omega
-    r_tip = np.sqrt((A3 / np.pi) + r_root**2)
-    r_moyen = (r_root + r_tip) / 2.0
-    
-    # 6. Vitesse d'entraînement au rayon moyen
-    U_moyen = omega * r_moyen
-    geom['h'] = r_tip - r_root # Hauteur de l'aube
-    
-    # Sauvegarde
+    for _ in range(20): # Boucle de convergence
+        U2 = omega * r_m2
+        
+        # Équation d'Euler ajustée pour U2 != U3
+        Vw2 = (dh0 + U3 * Vw3) / U2
+        V2 = np.sqrt(Va2**2 + Vw2**2)
+        
+        # Thermodynamique Station 2
+        T2 = T01 - (V2**2) / (2 * cp)
+        P2 = P01 * (T2 / T01)**(gamma / (gamma - 1)) # Approx isentropique pour la géométrie
+        rho2 = P2 / (R_gaz * T2)
+        
+        A2 = m_dot / (rho2 * Va2)
+        
+        r_m2_old = r_m2
+        if racine_constante:
+            r_root2 = r_root3
+            r_tip2 = np.sqrt((A2 / np.pi) + r_root2**2)
+        else:
+            r_tip2 = r_tip3
+            r_root2 = np.sqrt(r_tip2**2 - (A2 / np.pi))
+            
+        r_m2 = (r_root2 + r_tip2) / 2.0
+        
+        # Condition de sortie : la géométrie ne bouge plus
+        if abs(r_m2 - r_m2_old) < 1e-6:
+            break
+
+    # 4. Finalisation des Triangles et Pertes
+    alpha2 = np.arctan(Vw2 / Va2)
+
+    Ww2 = Vw2 - U2
+    beta2 = np.arctan(Ww2 / Va2)
+    W2 = np.sqrt(Va2**2 + Ww2**2)
+
+    Ww3 = Vw3 - U3
+    beta3 = np.arctan(Ww3 / Va3)
+    W3 = np.sqrt(Va3**2 + Ww3**2)
+
+    # Calcul des pertes (1.c)
+    eta_hpt = donnees_hpt['eta_hpt']
+    dh0_is = dh0 / eta_hpt
+    perte_totale = dh0_is - dh0
+    zeta_s = (0.40 * perte_totale) / (0.5 * V2**2)
+    zeta_r = (0.60 * perte_totale) / (0.5 * W3**2)
+
+    # Calcul du degré de réaction RÉEL final
+    Reaction = (cp * (T2 - T3)) / dh0
+
+    # Sauvegarde structurée dans les dictionnaires
+    geom['A'] = {1: A1, 2: A2, 3: A3}
+    geom['r_root'] = {1: r_root1, 2: r_root2, 3: r_root3}
+    geom['r_tip'] = {1: r_tip1, 2: r_tip2, 3: r_tip3}
+    geom['r_m'] = {1: r_m1, 2: r_m2, 3: r_m3}
+    geom['h'] = {1: r_tip1-r_root1, 2: r_tip2-r_root2, 3: r_tip3-r_root3}
+
     vitesses['N_rpm'] = N_rpm
     vitesses['omega'] = omega
-    vitesses['U_moyen'] = U_moyen
-    vitesses['Va3'] = Va3
-    geom['r_root'] = r_root
-    geom['r_tip'] = r_tip
-    geom['r_moyen'] = r_moyen
-    
-    print(f"RPM: {N_rpm:.0f}, r_moyen: {r_moyen:.4f} m, U_moyen: {U_moyen:.2f} m/s")
+    vitesses['U'] = {1: U1, 2: U2, 3: U3}
+    vitesses['Va'] = {1: Va1, 2: Va2, 3: Va3}
+    vitesses['Vw'] = {2: Vw2, 3: Vw3}
+    vitesses['alpha'] = {1: alpha1_rad, 2: alpha2, 3: alpha3_rad}
+    vitesses['beta'] = {2: beta2, 3: beta3}
 
-
-def etape_1b_1c(donnees_cycle, Va2_guess):
-    print("\n--- Étape 1.b et 1.c : Triangles des vitesses et Pertes (Rayon Moyen) ---")
-    U_m = vitesses['U_moyen']
-    Va3 = vitesses['Va3']
-    Va2 = Va2_guess
-    dh0 = donnees_cycle['dh0_hpt']
-    
-    alpha3 = deg2rad(contraintes['alpha_3'])
-    
-    # Vitesses sortie (Station 3)
-    Vw3 = Va3 * np.tan(alpha3) # Convention
-    Ww3 = Vw3 - U_m
-    beta3 = np.arctan(Ww3 / Va3)
-    
-    # Euler pour trouver Vw2 : dh0 = U * (Vw2 - Vw3) (convention où les Vw s'ajoutent si sens opposés)
-    Vw2 = (dh0 / U_m) + Vw3
-    alpha2 = np.arctan(Vw2 / Va2)
-    
-    Ww2 = Vw2 - U_m
-    beta2 = np.arctan(Ww2 / Va2)
-    
-    # Enregistrement Station 2 (Moyen)
-    vitesses['V2'] = np.sqrt(Va2**2 + Vw2**2)
-    vitesses['W2'] = np.sqrt(Va2**2 + Ww2**2)
-    vitesses['W3'] = np.sqrt(Va3**2 + Ww3**2)
-    vitesses['alpha2'] = alpha2
-    vitesses['beta2'] = beta2
-    vitesses['beta3'] = beta3
-    vitesses['Vw2_m'] = Vw2 # Pour le vortex libre
-    vitesses['Vw3_m'] = Vw3
-    
-    # Pertes (1.c) basées sur l'efficacité
-    eta = donnees_cycle['eta_hpt']
-    dh0_is = dh0 / eta
-    perte_totale = dh0_is - dh0
-    perte_stator = 0.40 * perte_totale # Hypothèse courante
-    perte_rotor = 0.60 * perte_totale
-    
-    zeta_s = perte_stator / (0.5 * vitesses['V2']**2)
-    zeta_r = perte_rotor / (0.5 * vitesses['W3']**2)
-    
-    print(f"Alpha 2: {np.degrees(alpha2):.2f}°, Beta 2: {np.degrees(beta2):.2f}°, Beta 3: {np.degrees(beta3):.2f}°")
-    print(f"Zeta Stator: {zeta_s:.4f}, Zeta Rotor: {zeta_r:.4f}")
+    # Affichage des résultats
+    print(f"Régime : {N_rpm:.0f} RPM")
+    print(f"Rayons moyens [m] : r_m1={r_m1:.4f} | r_m2={r_m2:.4f} | r_m3={r_m3:.4f}")
+    print(f"Vitesses U [m/s]  : U1={U1:.2f} | U2={U2:.2f} | U3={U3:.2f}")
+    print(f"Vitesses Va [m/s] : Va1={Va1:.2f} | Va2={Va2:.2f} | Va3={Va3:.2f}")
+    print(f"Angles [deg]      : Alpha2={np.degrees(alpha2):.2f}° | Beta2={np.degrees(beta2):.2f}° | Beta3={np.degrees(beta3):.2f}°")
+    print(f"Pertes            : Zeta_S={zeta_s:.4f} | Zeta_R={zeta_r:.4f}")
+    print(f"Degré de réaction : {Reaction:.3f}")
 
 
 def etape_2():
@@ -167,6 +198,7 @@ def etape_2():
         
         print(f"Position {nom} (r={r:.4f}m) : U={U:.2f} m/s | Alpha2={np.degrees(alpha2):.2f}° | Beta2={np.degrees(beta2):.2f}° | Reaction={R:.2f}")
 
+
 def etape_3():
     print("\n--- Étape 3 : Paramètres des aubes (Zweifel) ---")
     # --- Rotor ---
@@ -177,8 +209,7 @@ def etape_3():
     
     s_cx_rotor = Z_R / (2 * (np.cos(beta3_m)**2) * (np.tan(beta2_m) + np.tan(beta3_m)))
     
-    # Calcul de Cx via le facteur de forme h/c. Approximation : c approx Cx / cos(gamma_stagger)
-    # Pour simplifier en 1ere approx, disons h/Cx approx h/c (c axiale et vraie corde sont liées, on utilise h/Cx direct ici pour la démo)
+    # Calcul de Cx via le facteur de forme h/c. 
     Cx_rotor = geom['h'] / contraintes['rotor_h_c'] 
     pas_rotor = s_cx_rotor * Cx_rotor
     N_rotor = 2 * np.pi * geom['r_moyen'] / pas_rotor
@@ -198,8 +229,11 @@ def etape_3():
     print(f"Stator -> s/Cx: {s_cx_stator:.3f}, Corde axiale: {Cx_stator*100:.2f} cm, Nombre d'aubes: {int(np.ceil(N_stator))} (arrondi)")
 
 
-def calcul():
-    etape_1a(donnees_cycle)
-    etape_1b_1c(donnees_cycle, Va2_guess=150.0) # Va2_guess est l'hypothèse demandée à l'étape 1c
+def calcul(donnees_hpt):
+    # Adaptation des variables du dictionnaire de la Partie A pour la Partie B
+    donnees_hpt['dh0_hpt'] = donnees_hpt['W_hpt'] / donnees_hpt['m_dot'] # Travail spécifique (J/kg)
+    donnees_hpt['eta_hpt'] = donnees_hpt['eta_iso']
+    
+    etape_1(donnees_hpt, racine_constante=True, Va2_guess=150.0)
     etape_2()
     etape_3()

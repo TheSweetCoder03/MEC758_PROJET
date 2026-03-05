@@ -264,3 +264,22 @@ def calcul():
     po5, to5, whpt, s5, mpt = Station_5(po4, to4, whpc, s4)
     po6, to6, wlpt, s6, mpf = Station_6(po5, to5, wlpc, s5, to3, mpt)
     p7, t7, wpt, hp, s7, sfc = Station_7(po6, to6, s6, mpf)
+
+def export_donnees_hpt():
+    mp = cte_comp["mpt"]
+    perte = cte_comp["pap"]
+    f = cte_cc["f"]
+    mpt_calc = mp * (1 - perte) * (1 + f)
+    donnees_hpt = {
+        'T01': station[4]['To'],                  
+        'P01': station[4]['Po'],                  
+        'T03': station[5]['To'],                  
+        'P03': station[5]['Po'],                  
+        'm_dot': mpt_calc,                
+        'W_hpt': station[5]['w'],               
+        'cp': cte_turb["cpt"],       
+        'gamma': cte_turb["yt"],     
+        'eta_iso': cte_turb["nthp"],  
+    }
+
+    return donnees_hpt
