@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.optimize import fsolve
 
 # --- Constantes et Contraintes du Projet ---
 contraintes = {
@@ -26,7 +27,7 @@ contraintes = {
 }
 
 geom = {}      # Pour stocker A, r_root, r_tip, r_moyen
-vitesses = {}  # Pour stocker U, Va, Vw, etc.
+vitesses = {}  # Pour stocker U, Va, Vu, etc.
 
 def deg2rad(angle):
     return angle * np.pi / 180.0
@@ -47,16 +48,15 @@ def etape_1(donnees_hpt, racine_constante=True, Va2_guess=150.0, tolerance = 1e-
     T03 = donnees_hpt['T05']
     P03 = donnees_hpt['P05']
 
-    # 1. STATION 3 (Sortie Rotor - Base de la géométrie)
+    # STATION 3 (Sortie Rotor)
     M3 = contraintes['M3']
     T3 = T03 / (1 + ((gamma - 1) / 2) * M3**2)
-    P3 = P03 / ((1 + ((gamma - 1) / 2) * M3**2)**(gamma / (gamma - 1)))
+    P3 = P03 * ((T3/T03)**(gamma / (gamma - 1)))
     rho3 = P3 / (R_gaz * T3)
 
     V3 = M3 * np.sqrt(gamma * R_gaz * T3)
-    alpha3_rad = deg2rad(contraintes['alpha_3'])
-    Va3 = V3 * np.cos(alpha3_rad)
-    Vw3 = V3 * np.sin(alpha3_rad)
+    Va3 = V3 * np.cos(deg2rad(contraintes['alpha_3']))
+    Vu3 = V3 * np.sin(deg2rad(contraintes['alpha_3']))
 
     A3 = m_dot / (rho3 * Va3)
 
@@ -97,47 +97,68 @@ def etape_1(donnees_hpt, racine_constante=True, Va2_guess=150.0, tolerance = 1e-
     Va2 = Va2_guess
     r_m2 = r_m3 # Hypothèse de départ
     
-    for _ in range(100): # Boucle de convergence
-        U2 = omega * r_m2
+    def equation_rm2(rm2_hypothese):
+        # fsolve passe un tableau (array), on extrait la valeur
+        r_in = rm2_hypothese[0] 
         
-        # Équation d'Euler ajustée pour U2 != U3
-        Vw2 = (dh0 + U3 * Vw3) / U2
-        V2 = np.sqrt(Va2**2 + Vw2**2)
+        U2_temp = omega * r_in
+        
+        # Équation d'Euler ajustée
+        Vu2_temp = (dh0 + U3 * Vu3) / U2_temp
+        V2_temp = np.sqrt(Va2**2 + Vu2_temp**2)
         
         # Thermodynamique Station 2
-        T2 = T01 - (V2**2) / (2 * cp)
-        P2 = P01 * (T2 / T01)**(gamma / (gamma - 1)) # Approx isentropique pour la géométrie
-        rho2 = P2 / (R_gaz * T2)
+        T2_temp = T01 - (V2_temp**2) / (2 * cp)
+        P2_temp = P01 * (T2_temp / T01)**(gamma / (gamma - 1))
+        rho2_temp = P2_temp / (R_gaz * T2_temp)
         
-        A2 = m_dot / (rho2 * Va2)
+        A2_temp = m_dot / (rho2_temp * Va2)
         
-        r_m2_old = r_m2
         if racine_constante:
-            r_root2 = r_root3
-            r_tip2 = np.sqrt((A2 / np.pi) + r_root2**2)
+            r_root2_temp = r_root3
+            r_tip2_temp = np.sqrt((A2_temp / np.pi) + r_root2_temp**2)
         else:
-            r_tip2 = r_tip3
-            r_root2 = np.sqrt(r_tip2**2 - (A2 / np.pi))
+            r_tip2_temp = r_tip3
+            r_root2_temp = np.sqrt(r_tip2_temp**2 - (A2_temp / np.pi))
             
-        r_m2 = (r_root2 + r_tip2) / 2.0
+        r_out = (r_root2_temp + r_tip2_temp) / 2.0
         
-        # Condition de sortie : la géométrie ne bouge plus
-        if abs(r_m2 - r_m2_old) < tolerance:
-            break
+        # Le solveur cherche la valeur où cette différence est exactement 0
+        return r_out - r_in
+
+    # Résolution : on donne la fonction et une valeur de départ (x0 = r_m3)
+    rm2_solution = fsolve(equation_rm2, x0=[r_m3], xtol=tolerance)
+    r_m2 = rm2_solution[0]
+    
+    # Recalcul final des variables
+    U2 = omega * r_m2
+    Vu2 = (dh0 + U3 * Vu3) / U2
+    V2 = np.sqrt(Va2**2 + Vu2**2)
+    T2 = T01 - (V2**2) / (2 * cp)
+    P2 = P01 * (T2 / T01)**(gamma / (gamma - 1))
+    rho2 = P2 / (R_gaz * T2)
+    A2 = m_dot / (rho2 * Va2)
+    
+    if racine_constante:
+        r_root2 = r_root3
+        r_tip2 = np.sqrt((A2 / np.pi) + r_root2**2)
+    else:
+        r_tip2 = r_tip3
+        r_root2 = np.sqrt(r_tip2**2 - (A2 / np.pi))
 
     # 4. Finalisation des Triangles et Pertes
-    alpha2 = np.arctan(Vw2 / Va2)
+    alpha2 = np.arctan(Vu2 / Va2)
 
-    Ww2 = Vw2 - U2
+    Ww2 = Vu2 - U2
     beta2 = np.arctan(Ww2 / Va2)
     W2 = np.sqrt(Va2**2 + Ww2**2)
 
-    Ww3 = Vw3 - U3
+    Ww3 = Vu3 - U3
     beta3 = np.arctan(Ww3 / Va3)
     W3 = np.sqrt(Va3**2 + Ww3**2)
 
     # Calcul des pertes (1.c)
-    eta_hpt = donnees_hpt['eta_hpt']
+    eta_hpt = donnees_hpt['eta_iso']
     dh0_is = dh0 / eta_hpt
     perte_totale = dh0_is - dh0
     zeta_s = (0.40 * perte_totale) / (0.5 * V2**2)
@@ -157,8 +178,8 @@ def etape_1(donnees_hpt, racine_constante=True, Va2_guess=150.0, tolerance = 1e-
     vitesses['omega'] = omega
     vitesses['U'] = {1: U1, 2: U2, 3: U3}
     vitesses['Va'] = {1: Va1, 2: Va2, 3: Va3}
-    vitesses['Vw'] = {2: Vw2, 3: Vw3}
-    vitesses['alpha'] = {1: alpha1_rad, 2: alpha2, 3: alpha3_rad}
+    vitesses['Vu'] = {2: Vu2, 3: Vu3}
+    vitesses['alpha'] = {1: contraintes['alpha_1'], 2: alpha2, 3: contraintes['alpha_3']}
     vitesses['beta'] = {2: beta2, 3: beta3}
 
     # Affichage des résultats
@@ -171,117 +192,6 @@ def etape_1(donnees_hpt, racine_constante=True, Va2_guess=150.0, tolerance = 1e-
     print(f"Degré de réaction : {Reaction:.3f}")
 
 
-def etape_2():
-    print("\nÉtape 2 : Triangles des vitesses (Vortex Libre)")
-    
-    # 1. Constantes du vortex libre (r * Vw = Cte) calculées au rayon moyen
-    K2 = geom['r_m'][2] * vitesses['Vw'][2]
-    K3 = geom['r_m'][3] * vitesses['Vw'][3]
-    
-    omega = vitesses['omega']
-    Va2 = vitesses['Va'][2]
-    Va3 = vitesses['Va'][3]
-    
-    # Dictionnaire pour sauvegarder les données radiales pour l'étape 4
-    vitesses['radiales'] = {'Root': {}, 'Tip': {}}
-    
-    for position in ['Root', 'Tip']:
-        print(f"Position {position}")
-        
-        # STATION 2 (Sortie Stator / Entrée Rotor) ---
-        r2 = geom['r_root'][2] if position == 'Root' else geom['r_tip'][2]
-        U2 = omega * r2
-        Vw2 = K2 / r2
-        alpha2 = np.arctan(Vw2 / Va2)
-        
-        Ww2 = Vw2 - U2
-        beta2 = np.arctan(Ww2 / Va2)
-        W2 = np.sqrt(Va2**2 + Ww2**2)
-        V2 = np.sqrt(Va2**2 + Vw2**2)
-        
-        # --- STATION 3 (Sortie Rotor) ---
-        r3 = geom['r_root'][3] if position == 'Root' else geom['r_tip'][3]
-        U3 = omega * r3
-        Vw3 = K3 / r3
-        alpha3 = np.arctan(Vw3 / Va3) 
-        
-        Ww3 = Vw3 - U3
-        beta3 = np.arctan(Ww3 / Va3)
-        W3 = np.sqrt(Va3**2 + Ww3**2)
-        
-        # --- CALCUL DU DEGRÉ DE RÉACTION EXACT ---
-        # Travail spécifique à ce rayon (Euler)
-        dh0_r = U2 * Vw2 + U3 * Vw3 
-        
-        # Chute d'enthalpie statique dans le rotor (conservation de la rothalpie)
-        delta_h_rotor = 0.5 * (W3**2 - W2**2) + 0.5 * (U2**2 - U3**2)
-        
-        # Degré de réaction 
-        R = delta_h_rotor / dh0_r
-        
-        # Sauvegarde
-        vitesses['radiales'][position] = {
-            'U2': U2, 'U3': U3,
-            'alpha2': alpha2, 'beta2': beta2,
-            'alpha3': alpha3, 'beta3': beta3,
-            'Reaction': R
-        }
-        
-        print(f"Station 2 (r={r2:.4f}m) : U2={U2:.2f} m/s | Alpha2={np.degrees(alpha2):.2f}° | Beta2={np.degrees(beta2):.2f}°")
-        print(f"Station 3 (r={r3:.4f}m) : U3={U3:.2f} m/s | Alpha3={np.degrees(alpha3):.2f}° | Beta3={np.degrees(beta3):.2f}°")
-        print(f"Degré de réaction : {R:.3f}")
-
-
-def etape_3():
-    print("\nÉtape 3 : Paramètres des aubes (Zweifel)")
-    
-    # STATOR (station 1 et 2)
-    # Sa géométrie se calcule sur sa sortie (Station 2).
-    alpha1_m = vitesses['alpha'][1]
-    alpha2_m = vitesses['alpha'][2]
-    Z_S = contraintes['stator_zweifel']
-    
-    s_cx_stator = Z_S / (2 * (np.cos(alpha2_m)**2) * (np.tan(alpha2_m) - np.tan(alpha1_m)))
-    
-    h_stator = geom['h'][2]
-    Cx_stator = h_stator / contraintes['stator_h_c']
-    pas_stator_theorique = s_cx_stator * Cx_stator
-    
-    # Arrondir le nombre d'aubes pour avoir un vrai design physique
-    N_stator = int(np.ceil(2 * np.pi * geom['r_m'][2] / pas_stator_theorique))
-    pas_stator_reel = 2 * np.pi * geom['r_m'][2] / N_stator
-    s_cx_stator_reel = pas_stator_reel / Cx_stator
-    
-    print(f"STATOR -> s/Cx: {s_cx_stator_reel:.3f} | Corde axiale (Cx): {Cx_stator*1000:.1f} mm | Nb aubes: {N_stator}")
-
-    # ROTOR (station 2 et 3)
-    # Sa géométrie se calcule sur sa sortie (Station 3).
-    beta2_m = vitesses['beta'][2]
-    beta3_m = abs(vitesses['beta'][3])
-    Z_R = contraintes['rotor_zweifel']
-    
-    s_cx_rotor = Z_R / (2 * (np.cos(beta3_m)**2) * (np.tan(beta2_m) + np.tan(beta3_m)))
-    
-    h_rotor = geom['h'][3]
-    Cx_rotor = h_rotor / contraintes['rotor_h_c'] 
-    pas_rotor_theorique = s_cx_rotor * Cx_rotor
-    
-    N_rotor = int(np.ceil(2 * np.pi * geom['r_m'][3] / pas_rotor_theorique))
-    pas_rotor_reel = 2 * np.pi * geom['r_m'][3] / N_rotor
-    s_cx_rotor_reel = pas_rotor_reel / Cx_rotor
-    
-    print(f"ROTOR  -> s/Cx: {s_cx_rotor_reel:.3f} | Corde axiale (Cx): {Cx_rotor*1000:.1f} mm | Nb aubes: {N_rotor}")
-    
-    # Sauvegarde des données
-    geom['stator'] = {'Cx': Cx_stator, 's': pas_stator_reel, 'N': N_stator, 's_cx': s_cx_stator_reel}
-    geom['rotor'] = {'Cx': Cx_rotor, 's': pas_rotor_reel, 'N': N_rotor, 's_cx': s_cx_rotor_reel}
-
-
 def calcul(donnees_hpt):
-    # Adaptation des variables du dictionnaire de la Partie A pour la Partie B
-    donnees_hpt['dh0_hpt'] = donnees_hpt['W_hpt'] / donnees_hpt['m_dot'] # Travail spécifique (J/kg)
-    donnees_hpt['eta_hpt'] = donnees_hpt['eta_iso']
     
     etape_1(donnees_hpt, racine_constante=True, Va2_guess=150.0)
-    etape_2()
-    etape_3()
