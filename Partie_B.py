@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.optimize import fsolve
+import matplotlib.pyplot as plt
 
 # --- Constantes et Contraintes du Projet ---
 contraintes = {
@@ -127,7 +128,7 @@ def etape_1(donnees_hpt, racine_constante=True, Va2_guess=150.0, tolerance = 1e-
         return r_out - r_in
 
     # Résolution : on donne la fonction et une valeur de départ (x0 = r_m3)
-    rm2_solution = fsolve(equation_rm2, x0=[r_m3], xtol=tolerance)
+    rm2_solution = fsolve(equation_rm2, x0=[r_m2], xtol=tolerance)
     r_m2 = rm2_solution[0]
     
     # Recalcul final des variables
@@ -191,7 +192,52 @@ def etape_1(donnees_hpt, racine_constante=True, Va2_guess=150.0, tolerance = 1e-
     print(f"Pertes            : Zeta_S={zeta_s:.4f} | Zeta_R={zeta_r:.4f}")
     print(f"Degré de réaction : {Reaction:.3f}")
 
+def plot_geometrie_turbine(geom_dict):
+    # Extraction des données du dictionnaire
+    stations = [1, 2, 3]
+    # On définit des positions axiales arbitraires pour la visualisation
+    x = [0, 1, 2] 
+    
+    r_root = [geom_dict['r_root'][s] for s in stations]
+    r_tip = [geom_dict['r_tip'][s] for s in stations]
+    r_m = [geom_dict['r_m'][s] for s in stations]
+
+    plt.figure(figsize=(10, 6))
+
+    # Tracer les limites de la veine
+    plt.plot(x, r_tip, 'k-', linewidth=2, label='Bout (Tip)')
+    plt.plot(x, r_root, 'k-', linewidth=2, label='Emplanture (Root)')
+    
+    # Tracer le rayon moyen
+    plt.plot(x, r_m, 'r--', alpha=0.7, label='Rayon moyen (Mean)')
+
+    # Remplissage de la zone de flux (la veine)
+    plt.fill_between(x, r_root, r_tip, color='skyblue', alpha=0.2, label='Veine fluide')
+
+    # Ajout des points aux stations
+    plt.scatter(x, r_tip, color='black')
+    plt.scatter(x, r_root, color='black')
+    plt.scatter(x, r_m, color='red', s=20)
+
+    # Décoration du graphique
+    plt.title("Profil méridien de l'étage de turbine", fontsize=14)
+    plt.xlabel("Stations (Positions axiales relatives)", fontsize=12)
+    plt.ylabel("Rayon [m]", fontsize=12)
+    
+    # Configuration des axes
+    plt.xticks(x, ['Station 1\n(Entrée Stator)', 'Station 2\n(Interface)', 'Station 3\n(Sortie Rotor)'])
+    plt.grid(True, linestyle=':', alpha=0.6)
+    plt.legend(loc='best')
+    
+    # Ajuster les limites pour mieux voir
+    margin = (max(r_tip) - min(r_root)) * 0.2
+    plt.ylim(min(r_root) - margin, max(r_tip) + margin)
+    
+    plt.tight_layout()
+    plt.show()
+
 
 def calcul(donnees_hpt):
     
     etape_1(donnees_hpt, racine_constante=True, Va2_guess=150.0)
+    plot_geometrie_turbine(geom)
