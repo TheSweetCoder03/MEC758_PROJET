@@ -123,61 +123,57 @@ def Station_4 (po3, to3, s3):
 
     return po4, to4, s4
 
-def Station_5 (po4, to4, whpc, s4):
+def Station_5 (po4, to4, whpc, s4, to3):
     # Station 5 : Sortie de la turbine haute pression
     nthp = cte_turb["nthp"]
     y = cte_turb["yt"]
     cpt = cte_turb["cpt"]
     mp = cte_comp["mpt"]
-    perte = cte_comp["pap"]
     f = cte_cc["f"]
+    pap = cte_comp["pap"]
+    cpc = cte_comp["cpc"]
 
-    mpt = mp * (1 - perte) * (1 + f)
+    mpt = mp * (1 - pap) * (1 + f) + mp * pap
+    to4u = ((mp * (1 - pap) * (1 + f)) * to4 * cpt + mp * pap * to3 * cpc)/ (mpt * cpt)
 
-    to5 = to4-(whpc/(mpt*cpt))
-    to5s = to4 - (to4-to5)/nthp
-    po5 = po4 * (to5s/to4)**(y/(y-1))
+    to5 = to4u-(whpc/(mpt*cpt))
+    to5s = to4u - (to4u-to5)/nthp
+    po5 = po4 * (to5s/to4u)**(y/(y-1))
 
-    whpt = mpt * cpt * (to4 - to5)
+    whpt = mpt * cpt * (to4u - to5)
 
     r = cpt * ((y-1)/y)
 
-    s5 = s4 + cpt * np.log(to5/to4) - r * np.log(po5/po4)
+    s5 = s4 + cpt * np.log(to5/to4u) - r * np.log(po5/po4)
 
     station[5] = {"Po": po5, "To": to5, "w": whpt, "s": s5}
 
     return po5, to5, whpt, s5, mpt
 
-def Station_6 (po5, to5, wlpc, s5, to3, mpt):
+def Station_6 (po5, to5, wlpc, s5, mpt):
     # Station 6 : Sortie de la turbine basse pression
     ntbp = cte_turb["ntbp"]
     y = cte_turb["yt"]
     cpt = cte_turb["cpt"]
     perte = cte_turb["deltapit"]
-    mp = cte_comp["mpt"]
-    pap = cte_comp["pap"]
-    cpc = cte_comp["cpc"]
-
-    mpf = mpt + mp * pap 
 
     po5p = po5 * (1 - perte)
-    to5u = (mpt * to5 * cpt + mp * pap * to3 * cpc)/ (mpf * cpt)
 
-    to6 = to5u-(wlpc/(mpf*cpt))
-    to6s = to5u - (to5u-to6)/ntbp
-    po6 = po5p * (to6s/to5u)**(y/(y-1))
+    to6 = to5-(wlpc/(mpt*cpt))
+    to6s = to5 - (to5-to6)/ntbp
+    po6 = po5p * (to6s/to5)**(y/(y-1))
 
-    wlpt = mpf * cpt * (to5u - to6)
+    wlpt = mpt * cpt * (to5 - to6)
 
     r = cpt * ((y-1)/y)
 
-    s6 = s5 + cpt * np.log(to6/to5u) - r * np.log(po6/po5)
+    s6 = s5 + cpt * np.log(to6/to5) - r * np.log(po6/po5)
 
     station[6] = {"Po": po6, "To": to6, "w": wlpt, "s": s6}
 
-    return po6, to6, wlpt, s6, mpf
+    return po6, to6, wlpt, s6
 
-def Station_7 (po6, to6, s6, mpf):
+def Station_7 (po6, to6, s6, mpt):
     # Station 7 : Sortie de la turbine de puissance
     ntp = cte_turb["ntp"]
     y = cte_turb["yt"]
@@ -193,7 +189,7 @@ def Station_7 (po6, to6, s6, mpf):
     t7s = to6 * (p7/po6)**((y-1)/y)
     t7 = to6 - (to6-t7s)*ntp
 
-    wpt = mpf * cpt * (to6 - t7)
+    wpt = mpt * cpt * (to6 - t7)
     hp = wpt / 745.7
 
     r = cpt * ((y-1)/y)
@@ -261,9 +257,9 @@ def calcul():
     po2, to2, wlpc, s2 = Station_2(po1, to1, s1)
     po3, to3, whpc, s3 = Station_3(po2, to2, s2)
     po4, to4, s4 = Station_4(po3, to3, s3)
-    po5, to5, whpt, s5, mpt = Station_5(po4, to4, whpc, s4)
-    po6, to6, wlpt, s6, mpf = Station_6(po5, to5, wlpc, s5, to3, mpt)
-    p7, t7, wpt, hp, s7, sfc = Station_7(po6, to6, s6, mpf)
+    po5, to5, whpt, s5, mpt = Station_5(po4, to4, whpc, s4, to3)
+    po6, to6, wlpt, s6 = Station_6(po5, to5, wlpc, s5, mpt)
+    p7, t7, wpt, hp, s7, sfc = Station_7(po6, to6, s6, mpt)
 
 def export_donnees_hpt():
     mp = cte_comp["mpt"]
