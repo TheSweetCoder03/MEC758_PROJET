@@ -22,8 +22,9 @@ cte_comp= {
     "Ur": 300, # Vitesse de roation à la racine en m/s
     "rr": 0.5, # Rapport de rayon des ailettes du compresseur"
     "haller": 0.72, # Nombre de Haller
-    "rpmlpc": 10000, # Vitesse de rotation du compresseur basse pression en rpm (valeur posée)
-    "rpmhpc": 20000, # Vitesse de rotation du compresseur haute pression en rpm (valeur posée)
+    "rpmlpc": 40000, # Vitesse de rotation du compresseur basse pression en rpm (valeur posée)
+    "rpmhpc": 45000, # Vitesse de rotation du compresseur haute pression en rpm (valeur posée)
+    "alpha1": 0 # Angle d'entrée de l'air dans le compresseur basse pression en degrés (valeur posée)
 }
 
 cte_cc= {
@@ -76,6 +77,7 @@ def Station_2 (po1, to1, s1):
     Ur = cte_comp["Ur"]
     rr = cte_comp["rr"] # Ratio des rayons des ailettes du compresseur
     rpmlpc = cte_comp["rpmlpc"] * (2 * np.pi / 60) #rpm du compresseur basse pression converti en rad/s
+    alpha1 = cte_comp["alpha1"] # Angle d'entrée de l'air dans le compresseur basse pression en degrés
     altitude = cte_amb["altitude"]
     rho = 352.995*(((1-0.0000225577*altitude)**5.25516)/(288.15-0.0065*altitude)) # Masse volumique de l'air à l'altitude selon Marcel Délèze -> https://www.deleze.name/marcel/sec2/applmaths/pression-altitude/masse_volumique.pdf
 
@@ -94,7 +96,8 @@ def Station_2 (po1, to1, s1):
     Rt = Rr / rr
     rm = (Rt + Rr) / 2
     A = np.pi * (Rt**2 - Rr**2)
-    va = mp / (rho * A)
+    v1 = mp / (rho * A)
+    va = v1 * np.cos(alpha1)
     Um = rm * rpmlpc
     Vru2 = fsolve(lambda Vru2s : 0.72 - (np.sqrt(va**2 + Vru2s**2)/(np.sqrt(va**2 + (Um - Vru2s)**2))), x0 = [Um/2])[0]
     Vru1 = Vru2 / haller
@@ -122,6 +125,10 @@ def Station_3 (po2, to2, s2):
     r = cp * ((y-1)/y)
 
     s3 = s2 + cp * np.log(to3/to2) - r * np.log(po3/po2)
+
+    # Calcul du nombre d'étages
+
+
 
     station[3] = {"Po": po3, "To": to3, "w": whpc, "s": s3}
 
