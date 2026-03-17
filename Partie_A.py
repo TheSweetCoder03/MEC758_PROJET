@@ -149,7 +149,7 @@ def Station_5 (po4, to4, whpc, s4, to3):
 
     s5 = s4 + cpt * np.log(to5/to4u) - r * np.log(po5/po4p)
 
-    station[5] = {"Po": po5, "To": to5, "w": whpt, "s": s5}
+    station[5] = {"Po": po5, "To": to5, "w": whpt, "s": s5, "mpt": mpt}
 
     return po5, to5, whpt, s5, mpt
 
@@ -268,10 +268,7 @@ def calcul():
     p7, t7, wpt, hp, s7, sfc = Station_7(po6, to6, s6, mpt)
 
 def export_donnees_hpt():
-    mp = cte_comp["mpt"]
-    perte = cte_comp["pap"]
-    f = cte_cc["f"]
-    mpt_calc = mp * (1 - perte) * (1 + f) + mp * perte
+    mpt_calc = station[5]['mpt']
     donnees_hpt = {
         'T04': station[4]['To'],                  
         'P04': station[4]['Po'],                  
