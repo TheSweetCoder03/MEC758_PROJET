@@ -311,7 +311,8 @@ def export_donnees_hpt():
         'cp': cte_turb["cpt"],       
         'gamma': cte_turb["yt"],     
         'eta_iso': cte_turb["nthp"],  
-        'dh0_hpt': station[5]['w'] / mpt_calc # Travail spécifique (J/kg)
+        'dh0_hpt': station[5]['w'] / mpt_calc, # Travail spécifique (J/kg)
+        'rpmhpc': cte_comp["rpmhpc"]
     }
 
     return donnees_hpt
