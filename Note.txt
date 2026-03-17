@@ -1,0 +1,3 @@
+Hypothèses:
+- Ne pas prendre U2=U3 dans la turbine
+- Configurer avec divergence dans le rotor 
