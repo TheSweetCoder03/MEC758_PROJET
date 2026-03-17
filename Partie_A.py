@@ -1,11 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
 
 cte_amb= {
     "pa": 87560, # Pression atmosphérique à 1219m altitude en Pa
     "ta": 37.8, # Température à 1219m altitude en degres celcius
-    "va": 0, # Vitesse d'entrée en m/s
+    "vinf": 0, # Vitesse d'entrée en m/s
     "ve": 0, # Vitesse de sortie en m/s
+    "altitude": 1219, # Altitude en mètres
 }
 
 cte_comp= {
@@ -17,6 +19,11 @@ cte_comp= {
     "nchp": 0.84, # Rendement du compresseur haute pression
     "mpt": 5.443, # Débit d'air massique total en kg/s
     "pap": 0.10, # Pourcentage d'air utilisé pour le refroidissement des turbines
+    "Ur": 300, # Vitesse de roation à la racine en m/s
+    "rr": 0.5, # Rapport de rayon des ailettes du compresseur"
+    "haller": 0.72, # Nombre de Haller
+    "rpmlpc": 10000, # Vitesse de rotation du compresseur basse pression en rpm (valeur posée)
+    "rpmhpc": 20000, # Vitesse de rotation du compresseur haute pression en rpm (valeur posée)
 }
 
 cte_cc= {
@@ -44,10 +51,11 @@ def Station_1 ():
     # Station 1 : Entrée de l'air dans le compresseur basse pression
     p1 = cte_amb["pa"]
     t1 = cte_amb["ta"] + 273.15 # Convertir en Kelvin
-    v1 = cte_amb["va"]
+    va = cte_amb["vinf"]
     cp = cte_comp["cpc"]
     y = cte_comp["yc"]
     s1 = 0 # Entropie de référence
+    v1 = va
 
     to1 = t1 + (v1**2) / (2 * cp)
     po1 = p1* (to1/t1)**(y/(y-1))
@@ -64,7 +72,12 @@ def Station_2 (po1, to1, s1):
     y = cte_comp["yc"]
     mp = cte_comp["mpt"]
     cp = cte_comp["cpc"]
-
+    haller = cte_comp["haller"]
+    Ur = cte_comp["Ur"]
+    rr = cte_comp["rr"] # Ratio des rayons des ailettes du compresseur
+    rpmlpc = cte_comp["rpmlpc"] * (2 * np.pi / 60) #rpm du compresseur basse pression converti en rad/s
+    altitude = cte_amb["altitude"]
+    rho = 352.995*(((1-0.0000225577*altitude)**5.25516)/(288.15-0.0065*altitude)) # Masse volumique de l'air à l'altitude selon Marcel Délèze -> https://www.deleze.name/marcel/sec2/applmaths/pression-altitude/masse_volumique.pdf
 
     po2 = po1 * rpbp
     to2s = to1 * (rpbp)**((y-1)/y)
@@ -76,7 +89,17 @@ def Station_2 (po1, to1, s1):
 
     s2 = s1 + cp * np.log(to2/to1) - r * np.log(po2/po1)
 
-    
+    #Calcul du nombre d'étages
+    Rr = Ur / rpmlpc
+    Rt = Rr / rr
+    rm = (Rt + Rr) / 2
+    A = np.pi * (Rt**2 - Rr**2)
+    va = mp / (rho * A)
+    Um = rm * rpmlpc
+    Vru2 = fsolve(lambda Vru2s : 0.72 - (np.sqrt(va**2 + Vru2s**2)/(np.sqrt(va**2 + (Um - Vru2s)**2))), x0 = [Um/2])[0]
+    Vru1 = Vru2 / haller
+    deltaT0max = (Um * (Vru1 - Vru2)) / cp
+    n_etages = int((to2 - to1) / deltaT0max) + 1
 
     station[2] = {"Po": po2, "To": to2, "w": wlpc, "s": s2}
 

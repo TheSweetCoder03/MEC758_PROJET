@@ -127,7 +127,7 @@ def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
         # Le solveur cherche la valeur où cette différence est exactement 0
         return r_out - r_in
 
-    # Résolution : on donne la fonction et une valeur de départ (x0 = r_m3)
+    # Résolution : on donne la fonction et une valeur de départ (x0 = r_m2)
     rm2_solution = fsolve(equation_rm2, x0=[r_m2], xtol=tolerance)
     r_m2 = rm2_solution[0]
     
