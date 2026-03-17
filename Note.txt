@@ -4,3 +4,6 @@ Hypothèses:
 
 Partie_A: 
 - Ajouter point 3.9, 4.9, etc.. pour les sorties avant les pertes
+
+Partie_B:
+- A2 égal à A3

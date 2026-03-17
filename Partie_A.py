@@ -76,6 +76,8 @@ def Station_2 (po1, to1, s1):
 
     s2 = s1 + cp * np.log(to2/to1) - r * np.log(po2/po1)
 
+    
+
     station[2] = {"Po": po2, "To": to2, "w": wlpc, "s": s2}
 
     return po2, to2, wlpc, s2
