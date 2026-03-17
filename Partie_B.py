@@ -33,7 +33,7 @@ vitesses = {}  # Pour stocker U, Va, Vu, etc.
 def deg2rad(angle):
     return angle * np.pi / 180.0
 
-def etape_1(donnees_hpt, racine_constante=True, Va2_guess=150.0, tolerance = 1e-6):
+def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
     print(f"\nÉTAPES 1.a, 1.b, 1.c : Géométrie et Triangles")
     print(f"Stratégie de veine : {'Racine Constante' if racine_constante else 'Bout (Tip) Constant'}")
     
@@ -239,5 +239,5 @@ def plot_geometrie_turbine(geom_dict):
 
 def calcul(donnees_hpt):
     
-    etape_1(donnees_hpt, racine_constante=True, Va2_guess=150.0)
+    etape_1(donnees_hpt, racine_constante=False, Va2_guess=150.0)
     plot_geometrie_turbine(geom)
