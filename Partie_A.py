@@ -132,19 +132,22 @@ def Station_5 (po4, to4, whpc, s4, to3):
     f = cte_cc["f"]
     pap = cte_comp["pap"]
     cpc = cte_comp["cpc"]
+    perte_it = cte_turb["deltapit"]
 
     mpt = mp * (1 - pap) * (1 + f) + mp * pap
     to4u = ((mp * (1 - pap) * (1 + f)) * to4 * cpt + mp * pap * to3 * cpc)/ (mpt * cpt)
 
+    po4p = po4 * (1 - perte_it)
+
     to5 = to4u-(whpc/(mpt*cpt))
     to5s = to4u - (to4u-to5)/nthp
-    po5 = po4 * (to5s/to4u)**(y/(y-1))
+    po5 = po4p * (to5s/to4u)**(y/(y-1))
 
     whpt = mpt * cpt * (to4u - to5)
 
     r = cpt * ((y-1)/y)
 
-    s5 = s4 + cpt * np.log(to5/to4u) - r * np.log(po5/po4)
+    s5 = s4 + cpt * np.log(to5/to4u) - r * np.log(po5/po4p)
 
     station[5] = {"Po": po5, "To": to5, "w": whpt, "s": s5}
 
@@ -155,9 +158,9 @@ def Station_6 (po5, to5, wlpc, s5, mpt):
     ntbp = cte_turb["ntbp"]
     y = cte_turb["yt"]
     cpt = cte_turb["cpt"]
-    perte = cte_turb["deltapit"]
+    perte_it = cte_turb["deltapit"]
 
-    po5p = po5 * (1 - perte)
+    po5p = po5 * (1 - perte_it)
 
     to6 = to5-(wlpc/(mpt*cpt))
     to6s = to5 - (to5-to6)/ntbp
@@ -167,7 +170,7 @@ def Station_6 (po5, to5, wlpc, s5, mpt):
 
     r = cpt * ((y-1)/y)
 
-    s6 = s5 + cpt * np.log(to6/to5) - r * np.log(po6/po5)
+    s6 = s5 + cpt * np.log(to6/to5) - r * np.log(po6/po5p)
 
     station[6] = {"Po": po6, "To": to6, "w": wlpt, "s": s6}
 
@@ -179,6 +182,7 @@ def Station_7 (po6, to6, s6, mpt):
     y = cte_turb["yt"]
     cpt = cte_turb["cpt"]
     perte_et = cte_turb["deltapet"]
+    perte_it = cte_turb["deltapit"]
     pa = cte_amb["pa"]
     f = cte_cc["f"]
     mp = cte_comp["mpt"]
@@ -186,7 +190,9 @@ def Station_7 (po6, to6, s6, mpt):
 
     p7 = pa * (1 + perte_et)
 
-    t7s = to6 * (p7/po6)**((y-1)/y)
+    po6p = po6 * (1 - perte_it)
+
+    t7s = to6 * (p7/po6p)**((y-1)/y)
     t7 = to6 - (to6-t7s)*ntp
 
     wpt = mpt * cpt * (to6 - t7)
@@ -194,7 +200,7 @@ def Station_7 (po6, to6, s6, mpt):
 
     r = cpt * ((y-1)/y)
 
-    s7 = s6 + cpt * np.log(t7/to6) - r * np.log(p7/po6)
+    s7 = s6 + cpt * np.log(t7/to6) - r * np.log(p7/po6p)
 
     mpcc = mp * (1 - pap)
 

@@ -1,3 +1,7 @@
 Hypothèses:
 - Ne pas prendre U2=U3 dans la turbine
 - Configurer avec divergence dans le rotor 
+
+Partie_A: 
+- Ajouter point 3.9, 4.9, etc.. pour les sorties avant les pertes
+- Ajouter perte inter-turbine entre chaque turbine (3 endroits)
