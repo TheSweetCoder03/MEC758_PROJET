@@ -115,6 +115,11 @@ def Station_3 (po2, to2, s2):
     y = cte_comp["yc"]
     mp = cte_comp["mpt"]
     cp = cte_comp["cpc"]
+    rpmhpc = cte_comp["rpmhpc"] * (2 * np.pi / 60) #Conversion du rpm du HPC en rad/s
+    Ur = cte_comp["Ur"]
+    rr = cte_comp["rr"] # Ratio des rayons des ailettes du compresseur
+    alpha1 = cte_comp["alpha1"]
+    haller = cte_comp["haller"]
 
     po3 = po2 * rphp
     to3s = to2 * (rphp)**((y-1)/y)
@@ -127,6 +132,23 @@ def Station_3 (po2, to2, s2):
     s3 = s2 + cp * np.log(to3/to2) - r * np.log(po3/po2)
 
     # Calcul du nombre d'étages
+
+    alpha1hpc = alpha1 # On suppose que l'angle d'entrée dans le HPC est le même que dans le LPC
+    Ma1 = 0.5 # Hypothèse que le nombre de Mach dans le compresseur haute pression est de 0.5
+    to1hpc = to2 # On ramène la température à l'entrée du HPC, donc station 2, à la station 1 du HPC
+    t1hpc = to1hpc / (1 + (Ma1**2 * y * r) / (2 * cp)) # Température statique à l'entrée du HPC
+    v1hpc = Ma1 * np.sqrt(y * r * t1hpc)
+    va1hpc = v1hpc * np.cos(alpha1hpc)
+
+    Rr = Ur / rpmhpc
+    Rt = Rr / rr
+    rm = (Rt + Rr) / 2
+    Um = rm * rpmhpc
+    Vru2 = fsolve(lambda Vru2s : 0.72 - (np.sqrt(va1hpc**2 + Vru2s**2)/(np.sqrt(va1hpc**2 + (Um - Vru2s)**2))), x0 = [Um/2])[0]
+    Vru1 = Vru2 / haller
+    deltaT0max = (Um * (Vru1 - Vru2)) / cp
+    n_etages = int((to3 - to1hpc) / deltaT0max) + 1
+
     station[3] = {"Po": po3, "To": to3, "w": whpc, "s": s3}
 
     return po3, to3, whpc, s3
