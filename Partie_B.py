@@ -33,11 +33,11 @@ vitesses = {}  # Pour stocker U, Va, Vu, etc.
 def deg2rad(angle):
     return angle * np.pi / 180.0
 
-def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
+def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     print(f"\nÉTAPES 1.a, 1.b, 1.c : Géométrie et Triangles")
     print(f"Stratégie de veine : {'Racine Constante' if racine_constante else 'Bout (Tip) Constant'}")
     
-    # Récupération des données
+    # 1. Récupération des données
     gamma = donnees_hpt['gamma']
     R_gaz = donnees_hpt['cp'] * (gamma - 1) / gamma
     m_dot = donnees_hpt['m_dot']
@@ -50,7 +50,7 @@ def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
     T03 = donnees_hpt['T05']
     P03 = donnees_hpt['P05']
 
-    # STATION 3 (Sortie Rotor)
+    # --- STATION 3 (Sortie Rotor) ---
     M3 = contraintes['M3']
     T3 = T03 / (1 + ((gamma - 1) / 2) * M3**2)
     P3 = P03 * ((T3/T03)**(gamma / (gamma - 1)))
@@ -65,7 +65,7 @@ def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
     # Vitesse de rotation (N) basée sur Station 3
     omega = (rpm * np.pi) / 30.0
     
-    # On utilise la valeur cible de U_emplanture pour dimensionner le rayon à ce RPM
+    # Dimensionnement initial basé sur U_emplanture cible
     U_root_cible = (contraintes['U_emplanture_min'] + contraintes['U_emplanture_max']) / 2.0
     r_root3 = U_root_cible / omega
     
@@ -73,7 +73,7 @@ def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
     r_m3 = (r_root3 + r_tip3) / 2.0
     U3 = omega * r_m3
 
-    # 2. STATION 1 (Entrée Stator)
+    # --- STATION 1 (Entrée Stator) ---
     M1 = contraintes['M1']
     T1 = T01 / (1 + ((gamma - 1) / 2) * M1**2)
     P1 = P01 / ((1 + ((gamma - 1) / 2) * M1**2)**(gamma / (gamma - 1)))
@@ -95,26 +95,26 @@ def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
     r_m1 = (r_root1 + r_tip1) / 2.0
     U1 = omega * r_m1
 
-    # 3. STATION 2 (Solveur Itératif pour Va2 et géométrie)
-    Va2 = Va2_guess
-    r_m2 = r_m3 # Hypothèse de départ
+    # --- STATION 2 (Calcul forcé par le Degré de Réaction) ---
+    Reaction_cible = contraintes['reaction']
+    
+    # 3.a Thermodynamique de la station 2 (fixée par la réaction)
+    T2 = T3 + (Reaction_cible * dh0) / cp
+    V2 = np.sqrt(2 * cp * (T01 - T2))
+    P2 = P01 * (T2 / T01)**(gamma / (gamma - 1))
+    rho2 = P2 / (R_gaz * T2)
+    
+    r_m2_guess = r_m3 # Hypothèse de départ pour le rayon moyen
     
     def equation_rm2(rm2_hypothese):
-        # fsolve passe un tableau (array), on extrait la valeur
         r_in = rm2_hypothese[0] 
-        
         U2_temp = omega * r_in
         
-        # Équation d'Euler ajustée
         Vu2_temp = (dh0 + U3 * Vu3) / U2_temp
-        V2_temp = np.sqrt(Va2**2 + Vu2_temp**2)
+            
+        Va2_temp = np.sqrt(V2**2 - Vu2_temp**2)
         
-        # Thermodynamique Station 2
-        T2_temp = T01 - (V2_temp**2) / (2 * cp)
-        P2_temp = P01 * (T2_temp / T01)**(gamma / (gamma - 1))
-        rho2_temp = P2_temp / (R_gaz * T2_temp)
-        
-        A2_temp = m_dot / (rho2_temp * Va2)
+        A2_temp = m_dot / (rho2 * Va2_temp)
         
         if racine_constante:
             r_root2_temp = r_root3
@@ -125,20 +125,15 @@ def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
             
         r_out = (r_root2_temp + r_tip2_temp) / 2.0
         
-        # Le solveur cherche la valeur où cette différence est exactement 0
         return r_out - r_in
 
-    # Résolution : on donne la fonction et une valeur de départ (x0 = r_m2)
-    rm2_solution = fsolve(equation_rm2, x0=[r_m2], xtol=tolerance)
+    rm2_solution = fsolve(equation_rm2, x0=[r_m2_guess], xtol=tolerance)
     r_m2 = rm2_solution[0]
     
-    # Recalcul final des variables
+    # 3.c Recalcul final des variables avec la solution trouvée
     U2 = omega * r_m2
     Vu2 = (dh0 + U3 * Vu3) / U2
-    V2 = np.sqrt(Va2**2 + Vu2**2)
-    T2 = T01 - (V2**2) / (2 * cp)
-    P2 = P01 * (T2 / T01)**(gamma / (gamma - 1))
-    rho2 = P2 / (R_gaz * T2)
+    Va2 = np.sqrt(V2**2 - Vu2**2)
     A2 = m_dot / (rho2 * Va2)
     
     if racine_constante:
@@ -148,7 +143,7 @@ def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
         r_tip2 = r_tip3
         r_root2 = np.sqrt(r_tip2**2 - (A2 / np.pi))
 
-    # 4. Finalisation des Triangles et Pertes
+    # --- 4. Finalisation des Triangles et Pertes ---
     alpha2 = np.arctan(Vu2 / Va2)
 
     Ww2 = Vu2 - U2
@@ -166,10 +161,10 @@ def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
     zeta_s = (0.40 * perte_totale) / (0.5 * V2**2)
     zeta_r = (0.60 * perte_totale) / (0.5 * W3**2)
 
-    # Calcul du degré de réaction RÉEL final
+    # Vérification du degré de réaction final
     Reaction = (cp * (T2 - T3)) / dh0
 
-    # Sauvegarde structurée dans les dictionnaires
+    # --- 5. Sauvegarde structurée dans les dictionnaires ---
     geom['A'] = {1: A1, 2: A2, 3: A3}
     geom['r_root'] = {1: r_root1, 2: r_root2, 3: r_root3}
     geom['r_tip'] = {1: r_tip1, 2: r_tip2, 3: r_tip3}
@@ -181,10 +176,12 @@ def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
     vitesses['U'] = {1: U1, 2: U2, 3: U3}
     vitesses['Va'] = {1: Va1, 2: Va2, 3: Va3}
     vitesses['Vu'] = {2: Vu2, 3: Vu3}
-    vitesses['alpha'] = {1: contraintes['alpha_1'], 2: alpha2, 3: contraintes['alpha_3']}
-    vitesses['beta'] = {2: beta2, 3: beta3}
+    
+    # Uniformisation de tous les angles en degrés
+    vitesses['alpha'] = {1: contraintes['alpha_1'], 2: np.degrees(alpha2), 3: contraintes['alpha_3']}
+    vitesses['beta'] = {2: np.degrees(beta2), 3: np.degrees(beta3)}
 
-    # Affichage des résultats
+    # --- 6. Affichage des résultats ---
     print(f"Régime : {rpm:.0f} RPM")
     print(f"Rayons moyens [m] : r_m1={r_m1:.4f} | r_m2={r_m2:.4f} | r_m3={r_m3:.4f}")
     print(f"Vitesses U [m/s]  : U1={U1:.2f} | U2={U2:.2f} | U3={U3:.2f}")
@@ -304,27 +301,23 @@ def tracer_triangles_vitesses():
         ax.text(x_depart + dx/2, y_depart + dy/2 + 5, label, color=couleur, fontsize=12, fontweight='bold', ha='center', va='bottom')
 
     # --- STATION 1 : Entrée Stator ---
-    # Seule la vitesse absolue V1 existe (le stator ne bouge pas)
     tracer_vecteur(axs[0], 0, 0, Vu1, Va1, 'blue', 'V1')
     tracer_vecteur(axs[0], 0, 0, U1, 0, 'green', 'U1 (Ref)') # U1 tracé juste pour donner l'échelle
     axs[0].set_title("Station 1 (Entrée Stator)")
     
     # --- STATION 2 : Sortie Stator / Entrée Rotor ---
-    # V2 = U2 + W2 (Vectoriellement)
     tracer_vecteur(axs[1], 0, 0, U2, 0, 'green', 'U2')                   # Vitesse d'entraînement
     tracer_vecteur(axs[1], 0, 0, Vu2, Va2, 'blue', 'V2')                 # Vitesse absolue
     tracer_vecteur(axs[1], U2, 0, Vu2 - U2, Va2, 'red', 'W2')            # Vitesse relative
     axs[1].set_title("Station 2 (Entrée Rotor)")
     
     # --- STATION 3 : Sortie Rotor ---
-    # V3 = U3 + W3 (Vectoriellement)
     tracer_vecteur(axs[2], 0, 0, U3, 0, 'green', 'U3')                   # Vitesse d'entraînement
     tracer_vecteur(axs[2], 0, 0, Vu3, Va3, 'blue', 'V3')                 # Vitesse absolue
     tracer_vecteur(axs[2], U3, 0, Vu3 - U3, Va3, 'red', 'W3')            # Vitesse relative
     axs[2].set_title("Station 3 (Sortie Rotor)")
 
     # 3. Mise en forme et uniformisation des axes
-    # On trouve les valeurs extrêmes pour que les 3 graphiques aient la même échelle
     all_x = [0, U1, U2, U3, Vu1, Vu2, Vu3]
     all_y = [0, Va1, Va2, Va3]
     
@@ -342,7 +335,3 @@ def tracer_triangles_vitesses():
 
     plt.tight_layout()
     plt.show()
-
-# --- Appel de la fonction ---
-# Assure-toi que la fonction etape_1 a bien été exécutée juste avant pour remplir le dictionnaire 'vitesses' !
-# tracer_triangles_vitesses()
