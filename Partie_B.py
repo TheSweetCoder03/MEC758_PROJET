@@ -10,7 +10,7 @@ contraintes = {
     'alpha_1': -10.0,              # Angle absolu entrée stator 
     'alpha_3': 22.0,               # Angle absolu sortie rotor 
     'reaction': 0.63,              # Degré de réaction 
-    'AN2_min': 1.6129e7,           # Surface fois vitesse au carré (converti en m^2 RPM^2) 
+    'AN2_min': 1.6129e7,           # Surface fois vitesse au carré (converti en m^2 RPM) 
     'AN2_max': 3.2258e7,           
     'U_emplanture_min': 335.28,    # Vitesse min aubage à l'emplanture (converti en m/s) 
     'U_emplanture_max': 365.76,    
@@ -43,6 +43,7 @@ def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
     m_dot = donnees_hpt['m_dot']
     dh0 = donnees_hpt['dh0_hpt']
     cp = donnees_hpt['cp']
+    rpm = donnees_hpt["rpmhpc"]
     
     T01 = donnees_hpt['T04']
     P01 = donnees_hpt['P04']
@@ -62,12 +63,12 @@ def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
     A3 = m_dot / (rho3 * Va3)
 
     # Vitesse de rotation (N) basée sur Station 3
-    AN2_cible = (contraintes['AN2_min'] + contraintes['AN2_max']) / 2.0
-    N_rpm = np.sqrt(AN2_cible / A3)
-    omega = (N_rpm * np.pi) / 30.0
+    omega = (rpm * np.pi) / 30.0
+    
+    # On utilise la valeur cible de U_emplanture pour dimensionner le rayon à ce RPM
     U_root_cible = (contraintes['U_emplanture_min'] + contraintes['U_emplanture_max']) / 2.0
-
     r_root3 = U_root_cible / omega
+    
     r_tip3 = np.sqrt((A3 / np.pi) + r_root3**2)
     r_m3 = (r_root3 + r_tip3) / 2.0
     U3 = omega * r_m3
@@ -175,7 +176,7 @@ def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
     geom['r_m'] = {1: r_m1, 2: r_m2, 3: r_m3}
     geom['h'] = {1: r_tip1-r_root1, 2: r_tip2-r_root2, 3: r_tip3-r_root3}
 
-    vitesses['N_rpm'] = N_rpm
+    vitesses['Rpm'] = rpm
     vitesses['omega'] = omega
     vitesses['U'] = {1: U1, 2: U2, 3: U3}
     vitesses['Va'] = {1: Va1, 2: Va2, 3: Va3}
@@ -184,7 +185,7 @@ def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
     vitesses['beta'] = {2: beta2, 3: beta3}
 
     # Affichage des résultats
-    print(f"Régime : {N_rpm:.0f} RPM")
+    print(f"Régime : {rpm:.0f} RPM")
     print(f"Rayons moyens [m] : r_m1={r_m1:.4f} | r_m2={r_m2:.4f} | r_m3={r_m3:.4f}")
     print(f"Vitesses U [m/s]  : U1={U1:.2f} | U2={U2:.2f} | U3={U3:.2f}")
     print(f"Vitesses Va [m/s] : Va1={Va1:.2f} | Va2={Va2:.2f} | Va3={Va3:.2f}")
@@ -192,15 +193,15 @@ def etape_1(donnees_hpt, racine_constante, Va2_guess=150.0, tolerance = 1e-6):
     print(f"Pertes            : Zeta_S={zeta_s:.4f} | Zeta_R={zeta_r:.4f}")
     print(f"Degré de réaction : {Reaction:.3f}")
 
-def plot_geometrie_turbine(geom_dict):
+def plot_geometrie_turbine():
     # Extraction des données du dictionnaire
     stations = [1, 2, 3]
     # On définit des positions axiales arbitraires pour la visualisation
     x = [0, 1, 2] 
     
-    r_root = [geom_dict['r_root'][s] for s in stations]
-    r_tip = [geom_dict['r_tip'][s] for s in stations]
-    r_m = [geom_dict['r_m'][s] for s in stations]
+    r_root = [geom['r_root'][s] for s in stations]
+    r_tip = [geom['r_tip'][s] for s in stations]
+    r_m = [geom['r_m'][s] for s in stations]
 
     plt.figure(figsize=(10, 6))
 
@@ -236,8 +237,112 @@ def plot_geometrie_turbine(geom_dict):
     plt.tight_layout()
     plt.show()
 
+def tracer_limites_rpm():
 
-def calcul(donnees_hpt):
+    A3 = geom['A'][3]
+    rpm = vitesses['Rpm']
+
+    # Calcul des RPM correspondants aux contraintes AN^2 max et min
+    N_min = np.sqrt(contraintes['AN2_min'] / A3)
+    N_max = np.sqrt(contraintes['AN2_max'] / A3)
     
-    etape_1(donnees_hpt, racine_constante=False, Va2_guess=150.0)
-    plot_geometrie_turbine(geom)
+    fig, ax = plt.subplots(figsize=(10, 3))
+    
+    # Tracer la zone acceptable (ligne verte)
+    ax.plot([N_min, N_max], [0, 0], color='lightgreen', linewidth=10, solid_capstyle='round', label='Plage acceptable (Critère AN²)')
+    
+    # Tracer le RPM imposé
+    couleur_point = 'blue' if (N_min <= rpm <= N_max) else 'red'
+    ax.plot(rpm, 0, marker='o', color=couleur_point, markersize=12, label='RPM Imposé')
+    
+    # Annotations
+    ax.text(N_min, 0.05, f'Min: {N_min:.0f} RPM', ha='center', va='bottom', fontsize=10, fontweight='bold')
+    ax.text(N_max, 0.05, f'Max: {N_max:.0f} RPM', ha='center', va='bottom', fontsize=10, fontweight='bold')
+    ax.text(rpm, -0.05, f'Actuel: {rpm:.0f}', ha='center', va='top', color=couleur_point, fontsize=10, fontweight='bold')
+    
+    # Mise en forme du graphique
+    ax.set_yticks([]) # Cacher l'axe Y
+    ax.spines['left'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    
+    # Ajuster l'axe X pour bien voir les limites
+    marge = (N_max - N_min) * 0.2
+    ax.set_xlim(min(N_min, rpm) - marge, max(N_max, rpm) + marge)
+    
+    ax.set_title("Vérification du Régime (RPM) vs Contraintes Structurelles (AN²)")
+    ax.set_xlabel("Vitesse de rotation N [RPM]")
+    ax.legend(loc='upper right')
+    
+    plt.tight_layout()
+    plt.show()
+
+def tracer_triangles_vitesses():
+    # 1. Extraction des variables globales du dictionnaire 'vitesses'
+    U1 = vitesses['U'][1]
+    U2 = vitesses['U'][2]
+    U3 = vitesses['U'][3]
+    
+    Va1 = vitesses['Va'][1]
+    Va2 = vitesses['Va'][2]
+    Va3 = vitesses['Va'][3]
+    
+    Vu2 = vitesses['Vu'][2]
+    Vu3 = vitesses['Vu'][3]
+    
+    # Vu1 n'est pas stocké explicitement, on le recalcule via Va1 et alpha1 (qui est en degrés)
+    alpha1_deg = vitesses['alpha'][1]
+    Vu1 = Va1 * np.tan(np.deg2rad(alpha1_deg))
+    
+    # 2. Création de la figure avec 3 sous-graphiques alignés
+    fig, axs = plt.subplots(1, 3, figsize=(16, 5))
+    
+    # Fonction interne pour tracer un vecteur proprement
+    def tracer_vecteur(ax, x_depart, y_depart, dx, dy, couleur, label):
+        ax.quiver(x_depart, y_depart, dx, dy, angles='xy', scale_units='xy', scale=1, color=couleur, width=0.012)
+        # Placement du texte (au milieu du vecteur avec un léger décalage)
+        ax.text(x_depart + dx/2, y_depart + dy/2 + 5, label, color=couleur, fontsize=12, fontweight='bold', ha='center', va='bottom')
+
+    # --- STATION 1 : Entrée Stator ---
+    # Seule la vitesse absolue V1 existe (le stator ne bouge pas)
+    tracer_vecteur(axs[0], 0, 0, Vu1, Va1, 'blue', 'V1')
+    tracer_vecteur(axs[0], 0, 0, U1, 0, 'green', 'U1 (Ref)') # U1 tracé juste pour donner l'échelle
+    axs[0].set_title("Station 1 (Entrée Stator)")
+    
+    # --- STATION 2 : Sortie Stator / Entrée Rotor ---
+    # V2 = U2 + W2 (Vectoriellement)
+    tracer_vecteur(axs[1], 0, 0, U2, 0, 'green', 'U2')                   # Vitesse d'entraînement
+    tracer_vecteur(axs[1], 0, 0, Vu2, Va2, 'blue', 'V2')                 # Vitesse absolue
+    tracer_vecteur(axs[1], U2, 0, Vu2 - U2, Va2, 'red', 'W2')            # Vitesse relative
+    axs[1].set_title("Station 2 (Entrée Rotor)")
+    
+    # --- STATION 3 : Sortie Rotor ---
+    # V3 = U3 + W3 (Vectoriellement)
+    tracer_vecteur(axs[2], 0, 0, U3, 0, 'green', 'U3')                   # Vitesse d'entraînement
+    tracer_vecteur(axs[2], 0, 0, Vu3, Va3, 'blue', 'V3')                 # Vitesse absolue
+    tracer_vecteur(axs[2], U3, 0, Vu3 - U3, Va3, 'red', 'W3')            # Vitesse relative
+    axs[2].set_title("Station 3 (Sortie Rotor)")
+
+    # 3. Mise en forme et uniformisation des axes
+    # On trouve les valeurs extrêmes pour que les 3 graphiques aient la même échelle
+    all_x = [0, U1, U2, U3, Vu1, Vu2, Vu3]
+    all_y = [0, Va1, Va2, Va3]
+    
+    x_min, x_max = min(all_x) - 50, max(all_x) + 50
+    y_min, y_max = min(all_y) - 20, max(all_y) + 50
+
+    for ax in axs:
+        ax.set_xlim(x_min, x_max)
+        ax.set_ylim(y_min, y_max)
+        ax.set_xlabel("Vitesse Tangentielle (Vu, Wu, U) [m/s]")
+        ax.set_ylabel("Vitesse Axiale (Va) [m/s]")
+        ax.grid(True, linestyle='--', alpha=0.5)
+        ax.axhline(0, color='black', linewidth=1.2) # Axe X principal
+        ax.axvline(0, color='black', linewidth=1.2) # Axe Y principal
+
+    plt.tight_layout()
+    plt.show()
+
+# --- Appel de la fonction ---
+# Assure-toi que la fonction etape_1 a bien été exécutée juste avant pour remplir le dictionnaire 'vitesses' !
+# tracer_triangles_vitesses()

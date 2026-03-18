@@ -22,8 +22,8 @@ cte_comp= {
     "Ur": 300, # Vitesse de roation à la racine en m/s
     "rr": 0.5, # Rapport de rayon des ailettes du compresseur"
     "haller": 0.72, # Nombre de Haller
-    "rpmlpc": 40000, # Vitesse de rotation du compresseur basse pression en rpm (valeur posée)
-    "rpmhpc": 45000, # Vitesse de rotation du compresseur haute pression en rpm (valeur posée)
+    "rpmlpc": 32500, # Vitesse de rotation du compresseur basse pression en rpm (valeur posée)
+    "rpmhpc": 37500, # Vitesse de rotation du compresseur haute pression en rpm (valeur posée)
     "alpha1": 0 # Angle d'entrée de l'air dans le compresseur basse pression en degrés (valeur posée)
 }
 
@@ -127,9 +127,6 @@ def Station_3 (po2, to2, s2):
     s3 = s2 + cp * np.log(to3/to2) - r * np.log(po3/po2)
 
     # Calcul du nombre d'étages
-
-
-
     station[3] = {"Po": po3, "To": to3, "w": whpc, "s": s3}
 
     return po3, to3, whpc, s3
