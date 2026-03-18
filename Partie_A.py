@@ -100,7 +100,7 @@ def Station_2 (po1, to1, s1):
     va = v1 * np.cos(alpha1)
     Um = rm * rpmlpc
     Vru2 = fsolve(lambda Vru2s : 0.72 - (np.sqrt(va**2 + Vru2s**2)/(np.sqrt(va**2 + (Um - Vru2s)**2))), x0 = [Um/2])[0]
-    Vru1 = Vru2 / haller
+    Vru1 = Um - Vru2
     deltaT0max = (Um * (Vru1 - Vru2)) / cp
     n_etages = int((to2 - to1) / deltaT0max) + 1
 
@@ -145,7 +145,7 @@ def Station_3 (po2, to2, s2):
     rm = (Rt + Rr) / 2
     Um = rm * rpmhpc
     Vru2 = fsolve(lambda Vru2s : 0.72 - (np.sqrt(va1hpc**2 + Vru2s**2)/(np.sqrt(va1hpc**2 + (Um - Vru2s)**2))), x0 = [Um/2])[0]
-    Vru1 = Vru2 / haller
+    Vru1 = Um - Vru2
     deltaT0max = (Um * (Vru1 - Vru2)) / cp
     n_etages = int((to3 - to1hpc) / deltaT0max) + 1
 
