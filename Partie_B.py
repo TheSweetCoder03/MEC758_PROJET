@@ -428,26 +428,31 @@ def etape_2(donnees_hpt):
         axes[0, 0].set_ylabel("r (m)")
         axes[0, 0].set_xlabel("Λ")
         axes[0, 0].set_title("Λ  vs r")
+        axes[0, 0].tick_params(axis='x', rotation=90)
 
         axes[0, 1].plot(Vu, r)
         axes[0, 1].set_ylabel("r (m)")
         axes[0, 1].set_xlabel("Vu")
         axes[0, 1].set_title("Vu vs r")
+        axes[0, 1].tick_params(axis='x', rotation=90)
 
         axes[1, 0].plot(P, r)
         axes[1, 0].set_ylabel("r (m)")
         axes[1, 0].set_xlabel("P")
         axes[1, 0].set_title("P vs r")
+        axes[1, 0].tick_params(axis='x', rotation=90)
 
         axes[1, 1].plot(alpha, r)
         axes[1, 1].set_ylabel("r (m)")
         axes[1, 1].set_xlabel("Vrillage")
         axes[1, 1].set_title("Vrillage vs r")
+        axes[1, 1].tick_params(axis='x', rotation=90)
 
         axes[1, 2].plot(T, r)
         axes[1, 2].set_ylabel("r (m)")
         axes[1, 2].set_xlabel("T")
         axes[1, 2].set_title("Température vs r")
+        axes[1, 2].tick_params(axis='x', rotation=90)
 
         plt.tight_layout()
         plt.show()
