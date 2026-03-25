@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 contraintes = {
     # Paramètres de l'étage
@@ -415,7 +416,7 @@ def etape_2(donnees_hpt):
         r = np.linspace(j[5], j[6], 100)
         f_t = 1 - j[10] / r**2
         Vu = j[9] / r
-        V = np.sqrt(j[10]**2 + Vu**2)
+        V = np.sqrt(j[7]**2 + Vu**2)
         T = j[8] - V**2 / (2*cp)
         P = (((j[9]**2)*j[4])/2) * (1/j[1]**2 - 1/r**2) + j[2]
         alpha = np.arctan(j[11] / r)
