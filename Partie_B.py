@@ -82,6 +82,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     V1 = M1 * np.sqrt(gamma * R_gaz * T1)
     alpha1_rad = deg2rad(contraintes['alpha_1'])
     Va1 = V1 * np.cos(alpha1_rad)
+    Vu1 = V1 * np.sin(deg2rad(contraintes['alpha_1']))
 
     A1 = m_dot / (rho1 * Va1)
 
@@ -144,22 +145,26 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
         r_root2 = np.sqrt(r_tip2**2 - (A2 / np.pi))
 
     # --- 4. Finalisation des Triangles et Pertes ---
+    Vru1 = Vu1 - U1
+    beta1 = np.arctan(Vru1 / Va1)
+    Vr1 = np.sqrt(Va1**2 + Vru1**2)
+
     alpha2 = np.arctan(Vu2 / Va2)
 
-    Ww2 = Vu2 - U2
-    beta2 = np.arctan(Ww2 / Va2)
-    W2 = np.sqrt(Va2**2 + Ww2**2)
+    Vru2 = Vu2 - U2
+    beta2 = np.arctan(Vru2 / Va2)
+    Vr2 = np.sqrt(Va2**2 + Vru2**2)
 
-    Ww3 = Vu3 - U3
-    beta3 = np.arctan(Ww3 / Va3)
-    W3 = np.sqrt(Va3**2 + Ww3**2)
+    Vru3 = Vu3 - U3
+    beta3 = np.arctan(Vru3 / Va3)
+    Vr3 = np.sqrt(Va3**2 + Vru3**2)
 
     # Calcul des pertes (1.c)
     eta_hpt = donnees_hpt['eta_iso']
     dh0_is = dh0 / eta_hpt
     perte_totale = dh0_is - dh0
     zeta_s = (0.40 * perte_totale) / (0.5 * V2**2)
-    zeta_r = (0.60 * perte_totale) / (0.5 * W3**2)
+    zeta_r = (0.60 * perte_totale) / (0.5 * Vr3**2)
 
     # Vérification du degré de réaction final
     Reaction = (cp * (T2 - T3)) / dh0
@@ -175,11 +180,12 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     vitesses['omega'] = omega
     vitesses['U'] = {1: U1, 2: U2, 3: U3}
     vitesses['Va'] = {1: Va1, 2: Va2, 3: Va3}
-    vitesses['Vu'] = {2: Vu2, 3: Vu3}
+    vitesses['Vu'] = {1: Vu1, 2: Vu2, 3: Vu3}
+    vitesses['Vr'] = {1: Vr1, 2: Vr2, 3: Vr3}
     
     # Uniformisation de tous les angles en degrés
     vitesses['alpha'] = {1: contraintes['alpha_1'], 2: np.degrees(alpha2), 3: contraintes['alpha_3']}
-    vitesses['beta'] = {2: np.degrees(beta2), 3: np.degrees(beta3)}
+    vitesses['beta'] = {1: np.degrees(beta1), 2: np.degrees(beta2), 3: np.degrees(beta3)}
 
     # --- 6. Affichage des résultats ---
     print(f"Régime : {rpm:.0f} RPM")
@@ -276,7 +282,7 @@ def tracer_limites_rpm():
     plt.show()
 
 def tracer_triangles_vitesses():
-    # 1. Extraction des variables globales du dictionnaire 'vitesses'
+    # 1. Extraction des variables du dictionnaire 'vitesses' (qui doit être global ici)
     U1 = vitesses['U'][1]
     U2 = vitesses['U'][2]
     U3 = vitesses['U'][3]
@@ -284,54 +290,58 @@ def tracer_triangles_vitesses():
     Va1 = vitesses['Va'][1]
     Va2 = vitesses['Va'][2]
     Va3 = vitesses['Va'][3]
-    
+
+    Vu1 = vitesses['Vu'][1]
     Vu2 = vitesses['Vu'][2]
     Vu3 = vitesses['Vu'][3]
-    
-    # Vu1 n'est pas stocké explicitement, on le recalcule via Va1 et alpha1 (qui est en degrés)
-    alpha1_deg = vitesses['alpha'][1]
-    Vu1 = Va1 * np.tan(np.deg2rad(alpha1_deg))
     
     # 2. Création de la figure avec 3 sous-graphiques alignés
     fig, axs = plt.subplots(1, 3, figsize=(16, 5))
     
     # Fonction interne pour tracer un vecteur proprement
-    def tracer_vecteur(ax, x_depart, y_depart, dx, dy, couleur, label):
+    def tracer_vecteur(ax, x_depart, y_depart, dx, dy, couleur, label, decalage_y=0):
         ax.quiver(x_depart, y_depart, dx, dy, angles='xy', scale_units='xy', scale=1, color=couleur, width=0.012)
-        # Placement du texte (au milieu du vecteur avec un léger décalage)
-        ax.text(x_depart + dx/2, y_depart + dy/2 + 5, label, color=couleur, fontsize=12, fontweight='bold', ha='center', va='bottom')
+        
+        # Placement du texte aux 3/4 du vecteur (0.75) et retrait du fond blanc
+        ax.text(x_depart + dx * 0.75, y_depart + dy * 0.75 + decalage_y, label, color=couleur, fontsize=12, fontweight='bold', ha='center', va='center')
 
     # --- STATION 1 : Entrée Stator ---
-    tracer_vecteur(axs[0], 0, 0, Vu1, Va1, 'blue', 'V1')
-    tracer_vecteur(axs[0], 0, 0, U1, 0, 'green', 'U1 (Ref)') # U1 tracé juste pour donner l'échelle
+    # Vecteurs
+    tracer_vecteur(axs[0], 0, Va1, 0, -Va1, 'black', 'Va1') # Ajout de Va1
+    tracer_vecteur(axs[0], 0, Va1, Vu1, -Va1, 'blue', 'V1')
+    tracer_vecteur(axs[0], 0, 0, U1, 0, 'green', 'U1 (Ref)', decalage_y=-10)
     axs[0].set_title("Station 1 (Entrée Stator)")
     
     # --- STATION 2 : Sortie Stator / Entrée Rotor ---
-    tracer_vecteur(axs[1], 0, 0, U2, 0, 'green', 'U2')                   # Vitesse d'entraînement
-    tracer_vecteur(axs[1], 0, 0, Vu2, Va2, 'blue', 'V2')                 # Vitesse absolue
-    tracer_vecteur(axs[1], U2, 0, Vu2 - U2, Va2, 'red', 'W2')            # Vitesse relative
+    # Vecteurs
+    tracer_vecteur(axs[1], 0, Va2, 0, -Va2, 'black', 'Va2') # Ajout de Va2
+    tracer_vecteur(axs[1], 0, Va2, Vu2, -Va2, 'blue', 'V2', decalage_y=15)            
+    tracer_vecteur(axs[1], 0, Va2, Vu2 - U2, -Va2, 'red', 'Vr2', decalage_y=15)        
+    tracer_vecteur(axs[1], Vu2 - U2, 0, U2, 0, 'green', 'U2', decalage_y=-10)         
     axs[1].set_title("Station 2 (Entrée Rotor)")
     
     # --- STATION 3 : Sortie Rotor ---
-    tracer_vecteur(axs[2], 0, 0, U3, 0, 'green', 'U3')                   # Vitesse d'entraînement
-    tracer_vecteur(axs[2], 0, 0, Vu3, Va3, 'blue', 'V3')                 # Vitesse absolue
-    tracer_vecteur(axs[2], U3, 0, Vu3 - U3, Va3, 'red', 'W3')            # Vitesse relative
+    # Vecteurs
+    tracer_vecteur(axs[2], 0, Va3, 0, -Va3, 'black', 'Va3') # Ajout de Va3
+    tracer_vecteur(axs[2], 0, Va3, Vu3, -Va3, 'blue', 'V3', decalage_y=15)            
+    tracer_vecteur(axs[2], 0, Va3, Vu3 - U3, -Va3, 'red', 'Vr3', decalage_y=15)        
+    tracer_vecteur(axs[2], Vu3 - U3, 0, U3, 0, 'green', 'U3', decalage_y=-10)         
     axs[2].set_title("Station 3 (Sortie Rotor)")
 
     # 3. Mise en forme et uniformisation des axes
-    all_x = [0, U1, U2, U3, Vu1, Vu2, Vu3]
+    all_x = [0, U1, U2, U3, Vu1, Vu2, Vu3, Vu2-U2, Vu3-U3]
     all_y = [0, Va1, Va2, Va3]
     
     x_min, x_max = min(all_x) - 50, max(all_x) + 50
-    y_min, y_max = min(all_y) - 20, max(all_y) + 50
+    y_min, y_max = -30, max(all_y) + 30
 
     for ax in axs:
         ax.set_xlim(x_min, x_max)
         ax.set_ylim(y_min, y_max)
-        ax.set_xlabel("Vitesse Tangentielle (Vu, Wu, U) [m/s]")
+        ax.set_xlabel("Vitesse Tangentielle (Vu, Vru, U) [m/s]")
         ax.set_ylabel("Vitesse Axiale (Va) [m/s]")
         ax.grid(True, linestyle='--', alpha=0.5)
-        ax.axhline(0, color='black', linewidth=1.2) # Axe X principal
+        ax.axhline(0, color='black', linewidth=1.2) # Base du triangle
         ax.axvline(0, color='black', linewidth=1.2) # Axe Y principal
 
     plt.tight_layout()
