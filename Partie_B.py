@@ -2,7 +2,6 @@ import numpy as np
 from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
 
-# --- Constantes et Contraintes du Projet ---
 contraintes = {
     # Paramètres de l'étage
     'M1': 0.14,                    # Mach entrée 
@@ -29,6 +28,7 @@ contraintes = {
 
 geom = {}      # Pour stocker A, r_root, r_tip, r_moyen
 vitesses = {}  # Pour stocker U, Va, Vu, etc.
+pertes = {'stator': 0.4,'rotor' : 0.6}
 
 def deg2rad(angle):
     return angle * np.pi / 180.0
@@ -90,7 +90,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     r_m1 = (r_root1 + r_tip1) / 2.0
     U1 = omega * r_m1
 
-    # --- CALCUL DES PERTES CIBLES (1.c) ---
+    # Calcul des pertes totales
     eta_hpt = donnees_hpt['eta_iso']
     dh0_is = dh0 / eta_hpt
     perte_totale = dh0_is - dh0
@@ -100,7 +100,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     V2 = np.sqrt(2 * cp * (T01 - T2))
     
     # Pertes au stator (Hypothèse 40%)
-    zeta_s = (0.40 * perte_totale) / (0.5 * V2**2)
+    lambda_N = (pertes['stator'] * perte_totale) / (0.5 * V2**2)
     
     r_m2_guess = r_m3
     
@@ -109,16 +109,21 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
         U2_temp = omega * r_in
         
         Vu2_temp = (dh0 + U3 * Vu3) / U2_temp
-            
         Va2_temp = np.sqrt(V2**2 - Vu2_temp**2)
         
-        # Intégration des pertes statoriques
-        T2s_temp = T2 - (zeta_s * (0.5 * V2**2)) / cp
-        P2_temp = P01 * (T2s_temp / T01)**(gamma / (gamma - 1))
+        M2_temp = V2 / np.sqrt(gamma * R_gaz * T2)
+        
+        YN_temp = lambda_N * (1 + 0.5 * gamma * M2_temp**2)
+        
+        PR2_temp = (1 + ((gamma - 1) / 2) * M2_temp**2)**(gamma / (gamma - 1))
+        
+        # 4. Calcul de P2_temp en isolant P2 de l'équation de Y_N
+        P2_temp = P01 / (PR2_temp + YN_temp * (PR2_temp - 1))
+        
+        # 5. Densité réelle
         rho2_temp = P2_temp / (R_gaz * T2)
         
         A2_temp = m_dot / (rho2_temp * Va2_temp)
-        
         if racine_constante:
             r_root2_temp = r_root3
             r_tip2_temp = np.sqrt((A2_temp / np.pi) + r_root2_temp**2)
@@ -133,14 +138,15 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     rm2_solution = fsolve(equation_rm2, x0=[r_m2_guess], xtol=tolerance)
     r_m2 = rm2_solution[0]
     
-    # Recalcul final des variables avec la solution trouvée
+    # Calcul des variables avec la solution trouvée
     U2 = omega * r_m2
     Vu2 = (dh0 + U3 * Vu3) / U2
     Va2 = np.sqrt(V2**2 - Vu2**2)
-    T2s_final = T2 - (zeta_s * (0.5 * V2**2)) / cp
-    P2 = P01 * (T2s_final / T01)**(gamma / (gamma - 1))
+    M2 = V2 / np.sqrt(gamma * R_gaz * T2)
+    Y_N = lambda_N * (1 + 0.5 * gamma * M2**2)
+    PR2 = (1 + ((gamma - 1) / 2) * M2**2)**(gamma / (gamma - 1))
+    P2 = P01 / (PR2 + Y_N * (PR2 - 1))
     rho2 = P2 / (R_gaz * T2)
-    
     A2 = m_dot / (rho2 * Va2)
     if racine_constante:
         r_root2 = r_root3
@@ -168,7 +174,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     psi = (2 * dh0) / (U_moyen**2)
 
     # Calcul du coefficient de perte ciblé pour le rotor (hypothèse 60%)
-    zeta_r = (0.60 * perte_totale) / (0.5 * Vr3**2)
+    lambda_R = (pertes['rotor'] * perte_totale) / (0.5 * Vr3**2)
 
     # --- 5. Sauvegarde structurée dans les dictionnaires ---
     geom['A'] = {1: A1, 2: A2, 3: A3}
@@ -194,9 +200,9 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     print(f"Vitesses U [m/s]  : U1={U1:.2f} | U2={U2:.2f} | U3={U3:.2f}")
     print(f"Vitesses Va [m/s] : Va1={Va1:.2f} | Va2={Va2:.2f} | Va3={Va3:.2f}")
     print(f"Angles [deg]      : Alpha2={np.degrees(alpha2):.2f}° | Beta2={np.degrees(beta2):.2f}° | Beta3={np.degrees(beta3):.2f}°")
-    print(f"Pertes Cibles     : Zeta_S={zeta_s:.4f} | Zeta_R={zeta_r:.4f}")
+    print(f"Pertes            : Zeta_S={lambda_N:.4f} | Zeta_R={lambda_R:.4f}")
     print(f"Degré de réaction : {contraintes['reaction']:.3f}")
-    print(f"Coefficient de chargement (Psi) : {psi:.2f}") # <-- Ajout ici
+    print(f"Coefficient de chargement (Psi) : {psi:.2f}")
 
 def plot_geometrie_turbine():
     # Extraction des données du dictionnaire
