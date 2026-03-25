@@ -336,3 +336,38 @@ def tracer_triangles_vitesses():
 
     plt.tight_layout()
     plt.show()
+
+
+def export_donnee_2():
+    donne_hpt = {
+        'T04': station[4]['To'],                  
+        'Vu_1' : Va1 * np.tan(np.deg2rad(vitesses['alpha'][1]))
+        'Vu_2' : ,
+        'Vu_3' : ,
+        'rm_1' : ,
+        'rm_2' : ,
+        'rm_3' : ,
+        'Pm_1' : ,
+        'Pm_2' : ,
+        'Pm_3' : ,
+        'pm_1' : ,
+        'pm_2' : ,
+        'pm_3' : ,
+        'alpham_1' : ,
+        'alpham_2' : ,
+        'alpham_3' : ,
+        'rr_1' : ,
+        'rr_2' : ,
+        'rr_3' : ,
+        'rt_1' : ,
+        'rt_2' : ,
+        'rt_3' : ,
+        'f_t_m' : ,
+        'Va_1' : ,
+        'Va_2' : ,
+        'Va_3' : ,
+        'To_1' : ,
+        'To_2' : ,
+        'To_3' : ,
+        'cp' :
+    }
