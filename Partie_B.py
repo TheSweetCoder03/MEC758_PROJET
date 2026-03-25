@@ -190,6 +190,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     print(f"Pertes            : Zeta_S={zeta_s:.4f} | Zeta_R={zeta_r:.4f}")
     print(f"Degré de réaction : {Reaction:.3f}")
 
+
 def plot_geometrie_turbine():
     # Extraction des données du dictionnaire
     stations = [1, 2, 3]
