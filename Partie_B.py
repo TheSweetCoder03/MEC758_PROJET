@@ -37,20 +37,23 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     print(f"\nÉTAPES 1.a, 1.b, 1.c : Géométrie et Triangles")
     print(f"Stratégie de veine : {'Racine Constante' if racine_constante else 'Bout (Tip) Constant'}")
     
-    # 1. Récupération des données
+    # Récupération des données
     gamma = donnees_hpt['gamma']
     R_gaz = donnees_hpt['cp'] * (gamma - 1) / gamma
     m_dot = donnees_hpt['m_dot']
     dh0 = donnees_hpt['dh0_hpt']
     cp = donnees_hpt['cp']
     rpm = donnees_hpt["rpmhpc"]
-    
     T01 = donnees_hpt['T04']
     P01 = donnees_hpt['P04']
     T03 = donnees_hpt['T05']
     P03 = donnees_hpt['P05']
+    
+    # Calcul données universel
+    U_root_cible = (contraintes['U_emplanture_min'] + contraintes['U_emplanture_max']) / 2.0
+    omega = (rpm * np.pi) / 30.0
 
-    # --- STATION 3 (Sortie Rotor) ---
+    # Station 3 (Sortie Rotor) 
     M3 = contraintes['M3']
     T3 = T03 / (1 + ((gamma - 1) / 2) * M3**2)
     P3 = P03 * ((T3/T03)**(gamma / (gamma - 1)))
@@ -61,19 +64,12 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     Vu3 = V3 * np.sin(deg2rad(contraintes['alpha_3']))
 
     A3 = m_dot / (rho3 * Va3)
-
-    # Vitesse de rotation (N) basée sur Station 3
-    omega = (rpm * np.pi) / 30.0
-    
-    # Dimensionnement initial basé sur U_emplanture cible
-    U_root_cible = (contraintes['U_emplanture_min'] + contraintes['U_emplanture_max']) / 2.0
     r_root3 = U_root_cible / omega
-    
     r_tip3 = np.sqrt((A3 / np.pi) + r_root3**2)
     r_m3 = (r_root3 + r_tip3) / 2.0
     U3 = omega * r_m3
 
-    # --- STATION 1 (Entrée Stator) ---
+    # Station 1 (Entrée Stator) 
     M1 = contraintes['M1']
     T1 = T01 / (1 + ((gamma - 1) / 2) * M1**2)
     P1 = P01 / ((1 + ((gamma - 1) / 2) * M1**2)**(gamma / (gamma - 1)))
@@ -85,27 +81,28 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     Vu1 = V1 * np.sin(deg2rad(contraintes['alpha_1']))
 
     A1 = m_dot / (rho1 * Va1)
-
     if racine_constante:
         r_root1 = r_root3
         r_tip1 = np.sqrt((A1 / np.pi) + r_root1**2)
     else:
         r_tip1 = r_tip3
-        r_root1 = np.sqrt(r_tip1**2 - (A1 / np.pi))
-        
+        r_root1 = np.sqrt(r_tip1**2 - (A1 / np.pi))  
     r_m1 = (r_root1 + r_tip1) / 2.0
     U1 = omega * r_m1
 
-    # --- STATION 2 (Calcul forcé par le Degré de Réaction) ---
-    Reaction_cible = contraintes['reaction']
-    
-    # 3.a Thermodynamique de la station 2 (fixée par la réaction)
-    T2 = T3 + (Reaction_cible * dh0) / cp
+    # --- CALCUL DES PERTES CIBLES (1.c) ---
+    eta_hpt = donnees_hpt['eta_iso']
+    dh0_is = dh0 / eta_hpt
+    perte_totale = dh0_is - dh0
+
+    # Thermodynamique de la station 2 (fixée par la réaction)
+    T2 = T3 + (contraintes['reaction'] * dh0) / cp
     V2 = np.sqrt(2 * cp * (T01 - T2))
-    P2 = P01 * (T2 / T01)**(gamma / (gamma - 1))
-    rho2 = P2 / (R_gaz * T2)
     
-    r_m2_guess = r_m3 # Hypothèse de départ pour le rayon moyen
+    # Pertes au stator (Hypothèse 40%)
+    zeta_s = (0.40 * perte_totale) / (0.5 * V2**2)
+    
+    r_m2_guess = r_m3
     
     def equation_rm2(rm2_hypothese):
         r_in = rm2_hypothese[0] 
@@ -115,7 +112,12 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
             
         Va2_temp = np.sqrt(V2**2 - Vu2_temp**2)
         
-        A2_temp = m_dot / (rho2 * Va2_temp)
+        # Intégration des pertes statoriques
+        T2s_temp = T2 - (zeta_s * (0.5 * V2**2)) / cp
+        P2_temp = P01 * (T2s_temp / T01)**(gamma / (gamma - 1))
+        rho2_temp = P2_temp / (R_gaz * T2)
+        
+        A2_temp = m_dot / (rho2_temp * Va2_temp)
         
         if racine_constante:
             r_root2_temp = r_root3
@@ -131,12 +133,15 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     rm2_solution = fsolve(equation_rm2, x0=[r_m2_guess], xtol=tolerance)
     r_m2 = rm2_solution[0]
     
-    # 3.c Recalcul final des variables avec la solution trouvée
+    # Recalcul final des variables avec la solution trouvée
     U2 = omega * r_m2
     Vu2 = (dh0 + U3 * Vu3) / U2
     Va2 = np.sqrt(V2**2 - Vu2**2)
-    A2 = m_dot / (rho2 * Va2)
+    T2s_final = T2 - (zeta_s * (0.5 * V2**2)) / cp
+    P2 = P01 * (T2s_final / T01)**(gamma / (gamma - 1))
+    rho2 = P2 / (R_gaz * T2)
     
+    A2 = m_dot / (rho2 * Va2)
     if racine_constante:
         r_root2 = r_root3
         r_tip2 = np.sqrt((A2 / np.pi) + r_root2**2)
@@ -144,7 +149,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
         r_tip2 = r_tip3
         r_root2 = np.sqrt(r_tip2**2 - (A2 / np.pi))
 
-    # --- 4. Finalisation des Triangles et Pertes ---
+    # Calcul pour les triangles
     Vru1 = Vu1 - U1
     beta1 = np.arctan(Vru1 / Va1)
     Vr1 = np.sqrt(Va1**2 + Vru1**2)
@@ -159,15 +164,11 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     beta3 = np.arctan(Vru3 / Va3)
     Vr3 = np.sqrt(Va3**2 + Vru3**2)
 
-    # Calcul des pertes (1.c)
-    eta_hpt = donnees_hpt['eta_iso']
-    dh0_is = dh0 / eta_hpt
-    perte_totale = dh0_is - dh0
-    zeta_s = (0.40 * perte_totale) / (0.5 * V2**2)
-    zeta_r = (0.60 * perte_totale) / (0.5 * Vr3**2)
+    U_moyen = (U2 + U3) / 2.0 
+    psi = (2 * dh0) / (U_moyen**2)
 
-    # Vérification du degré de réaction final
-    Reaction = (cp * (T2 - T3)) / dh0
+    # Calcul du coefficient de perte ciblé pour le rotor (hypothèse 60%)
+    zeta_r = (0.60 * perte_totale) / (0.5 * Vr3**2)
 
     # --- 5. Sauvegarde structurée dans les dictionnaires ---
     geom['A'] = {1: A1, 2: A2, 3: A3}
@@ -193,9 +194,9 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     print(f"Vitesses U [m/s]  : U1={U1:.2f} | U2={U2:.2f} | U3={U3:.2f}")
     print(f"Vitesses Va [m/s] : Va1={Va1:.2f} | Va2={Va2:.2f} | Va3={Va3:.2f}")
     print(f"Angles [deg]      : Alpha2={np.degrees(alpha2):.2f}° | Beta2={np.degrees(beta2):.2f}° | Beta3={np.degrees(beta3):.2f}°")
-    print(f"Pertes            : Zeta_S={zeta_s:.4f} | Zeta_R={zeta_r:.4f}")
-    print(f"Degré de réaction : {Reaction:.3f}")
-
+    print(f"Pertes Cibles     : Zeta_S={zeta_s:.4f} | Zeta_R={zeta_r:.4f}")
+    print(f"Degré de réaction : {contraintes['reaction']:.3f}")
+    print(f"Coefficient de chargement (Psi) : {psi:.2f}") # <-- Ajout ici
 
 def plot_geometrie_turbine():
     # Extraction des données du dictionnaire
