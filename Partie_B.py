@@ -80,7 +80,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     V1 = M1 * np.sqrt(gamma * R_gaz * T1)
     alpha1_rad = deg2rad(contraintes['alpha_1'])
     Va1 = V1 * np.cos(alpha1_rad)
-    Vu1 = V1 * np.sin(deg2rad(contraintes['alpha_1']))
+    Vu1 = V1 * np.sin(alpha1_rad)
 
     A1 = m_dot / (rho1 * Va1)
     if racine_constante:
@@ -100,8 +100,6 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     # Thermodynamique de la station 2 (fixée par la réaction)
     T2 = T3 + (contraintes['reaction'] * dh0) / cp
     V2 = np.sqrt(2 * cp * (T01 - T2))
-    
-    # Pertes au stator (Hypothèse 40%)
     lambda_N = (pertes['stator'] * perte_totale) / (0.5 * V2**2)
     
     r_m2_guess = r_m3
@@ -109,22 +107,13 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     def equation_rm2(rm2_hypothese):
         r_in = rm2_hypothese[0] 
         U2_temp = omega * r_in
-        
         Vu2_temp = (dh0 + U3 * Vu3) / U2_temp
         Va2_temp = np.sqrt(V2**2 - Vu2_temp**2)
-        
         M2_temp = V2 / np.sqrt(gamma * R_gaz * T2)
-        
         YN_temp = lambda_N * (1 + 0.5 * gamma * M2_temp**2)
-        
         PR2_temp = (1 + ((gamma - 1) / 2) * M2_temp**2)**(gamma / (gamma - 1))
-        
-        # 4. Calcul de P2_temp en isolant P2 de l'équation de Y_N
         P2_temp = P01 / (PR2_temp + YN_temp * (PR2_temp - 1))
-        
-        # 5. Densité réelle
         rho2_temp = P2_temp / (R_gaz * T2)
-        
         A2_temp = m_dot / (rho2_temp * Va2_temp)
         if racine_constante:
             r_root2_temp = r_root3
@@ -132,9 +121,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
         else:
             r_tip2_temp = r_tip3
             r_root2_temp = np.sqrt(r_tip2_temp**2 - (A2_temp / np.pi))
-            
         r_out = (r_root2_temp + r_tip2_temp) / 2.0
-        
         return r_out - r_in
 
     rm2_solution = fsolve(equation_rm2, x0=[r_m2_guess], xtol=tolerance)
@@ -157,32 +144,32 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
         r_tip2 = r_tip3
         r_root2 = np.sqrt(r_tip2**2 - (A2 / np.pi))
 
-    # Calcul pour les triangles
+    # --- CALCUL DES ANGLES (ABSOLUS ET RELATIFS) ---
+    # Station 1
     Vru1 = Vu1 - U1
-    beta1 = np.arctan(Vru1 / Va1)
+    alpha_rel1 = np.arctan(Vru1 / Va1)
     Vr1 = np.sqrt(Va1**2 + Vru1**2)
 
+    # Station 2
     alpha2 = np.arctan(Vu2 / Va2)
-
     Vru2 = Vu2 - U2
-    beta2 = np.arctan(Vru2 / Va2)
+    alpha_rel2 = np.arctan(Vru2 / Va2)
     Vr2 = np.sqrt(Va2**2 + Vru2**2)
 
+    # Station 3
     Vru3 = Vu3 - U3
-    beta3 = np.arctan(Vru3 / Va3)
+    alpha_rel3 = np.arctan(Vru3 / Va3)
     Vr3 = np.sqrt(Va3**2 + Vru3**2)
 
     U_moyen = (U2 + U3) / 2.0 
     psi = (2 * dh0) / (U_moyen**2)
-
-    # Calcul du coefficient de perte ciblé pour le rotor (hypothèse 60%)
     lambda_R = (pertes['rotor'] * perte_totale) / (0.5 * Vr3**2)
 
-    # --- 5. Sauvegarde structurée dans les dictionnaires ---
+    # --- Sauvegarde structurée ---
     Var['P'] = {1: P1, 2: P2, 3: P3}
     Var['To'] = {1: T01, 2: T01, 3: T03}
     Var['p'] = {1: rho1, 2: rho2, 3: rho3}
-    Var['alpha'] = {1: alpha1_rad, 2: alpha2, 3: deg2rad(contraintes['alpha_3'])} #Angle en rad
+    Var['alpha'] = {1: alpha1_rad, 2: alpha2, 3: deg2rad(contraintes['alpha_3'])}
 
     geom['A'] = {1: A1, 2: A2, 3: A3}
     geom['r_root'] = {1: r_root1, 2: r_root2, 3: r_root3}
@@ -197,19 +184,14 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     vitesses['Vu'] = {1: Vu1, 2: Vu2, 3: Vu3}
     vitesses['Vr'] = {1: Vr1, 2: Vr2, 3: Vr3}
     
-    # Uniformisation de tous les angles en degrés
+    # NOUVEAU: Sauvegarde distincte de l'absolu et du relatif
     vitesses['alpha'] = {1: contraintes['alpha_1'], 2: np.degrees(alpha2), 3: contraintes['alpha_3']}
-    vitesses['beta'] = {1: np.degrees(beta1), 2: np.degrees(beta2), 3: np.degrees(beta3)}
+    vitesses['alpha_relatif'] = {1: np.degrees(alpha_rel1), 2: np.degrees(alpha_rel2), 3: np.degrees(alpha_rel3)}
 
-    # --- 6. Affichage des résultats ---
     print(f"Régime : {rpm:.0f} RPM")
-    print(f"Rayons moyens [m] : r_m1={r_m1:.4f} | r_m2={r_m2:.4f} | r_m3={r_m3:.4f}")
-    print(f"Vitesses U [m/s]  : U1={U1:.2f} | U2={U2:.2f} | U3={U3:.2f}")
     print(f"Vitesses Va [m/s] : Va1={Va1:.2f} | Va2={Va2:.2f} | Va3={Va3:.2f}")
-    print(f"Angles [deg]      : Alpha2={np.degrees(alpha2):.2f}° | Beta2={np.degrees(beta2):.2f}° | Beta3={np.degrees(beta3):.2f}°")
-    print(f"Pertes            : Zeta_S={lambda_N:.4f} | Zeta_R={lambda_R:.4f}")
-    print(f"Degré de réaction : {contraintes['reaction']:.3f}")
-    print(f"Coefficient de chargement (Psi) : {psi:.2f}")
+    print(f"Angles Abs.[deg]  : Alpha1={contraintes['alpha_1']:.2f}° | Alpha2={np.degrees(alpha2):.2f}° | Alpha3={contraintes['alpha_3']:.2f}°")
+    print(f"Angles Rel.[deg]  : Alpha_rel1={np.degrees(alpha_rel1):.2f}° | Alpha_rel2={np.degrees(alpha_rel2):.2f}° | Alpha_rel3={np.degrees(alpha_rel3):.2f}°")
 
 def plot_geometrie_turbine():
     # Extraction des données du dictionnaire
@@ -460,39 +442,56 @@ def etape_2(donnees_hpt):
 
 def etape_3(donnees_hpt):
     print(f"\nÉTAPES 3: Paramètres des aubes")
-    fs = 0.7
-    fr = 1.3
-    zweifels = 0.75
-    zweifelr = 0.9
-    h1 = rt1 - rr1
-    h2 = rt2 - rr2
-    h3 = rt3 - rr3
-    rm2 = (rt2 + rr2) / 2
-    rm3 = (rt3 + rr3) / 2
-    a1 = 1
-    a2 = 1
-    ar1 = 1
-    ar2 = 1
-    b1 = 1
-    b2 = 1
-    b3 = 1
+    
+    # CORRECTION 1: Ces paramètres sont dans 'contraintes' et non 'geom'
+    fs = contraintes['stator_h_c']
+    fr = contraintes['rotor_h_c']
+    zweifels = contraintes['stator_zweifel']
+    zweifelr = contraintes['rotor_zweifel']
+    
+    # CORRECTION 2: Correction de l'indice pour h3 (était r_root[2])
+    h1 = geom['r_tip'][1] - geom['r_root'][1]
+    h2 = geom['r_tip'][2] - geom['r_root'][2]
+    h3 = geom['r_tip'][3] - geom['r_root'][3] 
+    
+    rm2 = geom['r_m'][2]
+    rm3 = geom['r_m'][3]
+
+    # --- Extraction des angles pour Zweifel ---
+    # STATOR (Repère Absolu) - On prend la valeur absolue pour additionner la déflexion totale
+    alpha_s1 = abs(deg2rad(vitesses['alpha'][1]))
+    alpha_s2 = abs(deg2rad(vitesses['alpha'][2]))
+    
+    # ROTOR (Repère Relatif) - Le rotor "voit" l'angle relatif
+    alpha_r2 = abs(deg2rad(vitesses['alpha_relatif'][2]))
+    alpha_r3 = abs(deg2rad(vitesses['alpha_relatif'][3]))
+
+    # Calcul des angles de calage (stagger angle - gamma) approximés
+    gamma_s = (alpha_s1 + alpha_s2) / 2
+    gamma_r = (alpha_r2 + alpha_r3) / 2
 
     # Calcul hauteur moyenne ailette
     hs = (h1 + h2) / 2
     hr = (h2 + h3) / 2
 
-    # Calcul de la corde axiale
+    # Calcul des cordes (c = h / Facteur de forme)
     cs = hs / fs
     cr = hr / fr
-    ys = (a1 + a2)  / 2
-    yr = (b1 + b2) / 2
-    cas = cs * np.cos(ys)
-    car = cr * np.cos(yr)
+    
+    # Calcul de la corde axiale (c_a = c * cos(gamma))
+    cas = cs * np.cos(gamma_s)
+    car = cr * np.cos(gamma_r)
 
-    # Calcul du pas
-    pas_s = (zweifels * cas) / (2 * (np.tan(ar1)+np.tan(ar2)) * (np.cos(ar2))**2)
-    pas_r = (zweifelr * car) / (2 * abs(np.tan(b2)+np.tan(b3)) * (np.cos(b3))**2)
+    # CORRECTION 3: Formule de Zweifel exacte basée sur ton image (en isolant le pas 's')
+    # Stator : s = (Zw * c_a) / (2 * (tan(a1) + tan(a2)) * cos^2(a2))
+    pas_s = (zweifels * cas) / (2 * (np.tan(alpha_s1) + np.tan(alpha_s2)) * (np.cos(alpha_s2))**2)
+    
+    # Rotor : s = (Zw * c_a) / (2 * (tan(ar2) + tan(ar3)) * cos^2(ar3))
+    pas_r = (zweifelr * car) / (2 * (np.tan(alpha_r2) + np.tan(alpha_r3)) * (np.cos(alpha_r3))**2)
 
-    # Calcul du nombre d'ailette 
+    # Calcul du nombre d'ailettes (Périmètre moyen / pas)
     ns = 2 * np.pi * rm2 / pas_s
     nr = 2 * np.pi * rm3 / pas_r
+    
+    print(f"Stator | Corde axiale: {cas:.4f} m | Pas: {pas_s:.4f} m | Aubes: {ns:.1f} -> {int(np.ceil(ns))} aubes")
+    print(f"Rotor  | Corde axiale: {car:.4f} m | Pas: {pas_r:.4f} m | Aubes: {nr:.1f} -> {int(np.ceil(nr))} aubes")
