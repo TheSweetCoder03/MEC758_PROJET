@@ -197,9 +197,9 @@ def plot_geometrie_turbine():
     # On définit des positions axiales arbitraires pour la visualisation
     x = [0, 1, 2] 
     
-    r_root = [geom['r_root'][s] for s in stations]
-    r_tip = [geom['r_tip'][s] for s in stations]
-    r_m = [geom['r_m'][s] for s in stations]
+    r_root = [donnees['r_root'][s] for s in stations]
+    r_tip = [donnees['r_tip'][s] for s in stations]
+    r_m = [donnees['r_m'][s] for s in stations]
 
     plt.figure(figsize=(10, 6))
 
