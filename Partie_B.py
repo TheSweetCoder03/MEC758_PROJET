@@ -27,9 +27,7 @@ contraintes = {
     'vie_heures': 300              # Durée de vie 
 }
 
-Var = {}       # Pour stocker des variables
-geom = {}      # Pour stocker A, r_root, r_tip, r_moyen
-vitesses = {}  # Pour stocker U, Va, Vu, etc.
+donnees = {}       # Pour stocker des variables
 pertes = {'stator': 0.4,'rotor' : 0.6}
 
 def deg2rad(angle):
@@ -166,27 +164,27 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     lambda_R = (pertes['rotor'] * perte_totale) / (0.5 * Vr3**2)
 
     # --- Sauvegarde structurée ---
-    Var['P'] = {1: P1, 2: P2, 3: P3}
-    Var['To'] = {1: T01, 2: T01, 3: T03}
-    Var['p'] = {1: rho1, 2: rho2, 3: rho3}
-    Var['alpha'] = {1: alpha1_rad, 2: alpha2, 3: deg2rad(contraintes['alpha_3'])}
+    donnees['P'] = {1: P1, 2: P2, 3: P3}
+    donnees['To'] = {1: T01, 2: T01, 3: T03}
+    donnees['p'] = {1: rho1, 2: rho2, 3: rho3}
+    donnees['alpha'] = {1: alpha1_rad, 2: alpha2, 3: deg2rad(contraintes['alpha_3'])}
 
-    geom['A'] = {1: A1, 2: A2, 3: A3}
-    geom['r_root'] = {1: r_root1, 2: r_root2, 3: r_root3}
-    geom['r_tip'] = {1: r_tip1, 2: r_tip2, 3: r_tip3}
-    geom['r_m'] = {1: r_m1, 2: r_m2, 3: r_m3}
-    geom['h'] = {1: r_tip1-r_root1, 2: r_tip2-r_root2, 3: r_tip3-r_root3}
+    donnees['A'] = {1: A1, 2: A2, 3: A3}
+    donnees['r_root'] = {1: r_root1, 2: r_root2, 3: r_root3}
+    donnees['r_tip'] = {1: r_tip1, 2: r_tip2, 3: r_tip3}
+    donnees['r_m'] = {1: r_m1, 2: r_m2, 3: r_m3}
+    donnees['h'] = {1: r_tip1-r_root1, 2: r_tip2-r_root2, 3: r_tip3-r_root3}
 
-    vitesses['Rpm'] = rpm
-    vitesses['omega'] = omega
-    vitesses['U'] = {1: U1, 2: U2, 3: U3}
-    vitesses['Va'] = {1: Va1, 2: Va2, 3: Va3}
-    vitesses['Vu'] = {1: Vu1, 2: Vu2, 3: Vu3}
-    vitesses['Vr'] = {1: Vr1, 2: Vr2, 3: Vr3}
+    donnees['Rpm'] = rpm
+    donnees['omega'] = omega
+    donnees['U'] = {1: U1, 2: U2, 3: U3}
+    donnees['Va'] = {1: Va1, 2: Va2, 3: Va3}
+    donnees['Vu'] = {1: Vu1, 2: Vu2, 3: Vu3}
+    donnees['Vr'] = {1: Vr1, 2: Vr2, 3: Vr3}
     
     # NOUVEAU: Sauvegarde distincte de l'absolu et du relatif
-    vitesses['alpha'] = {1: contraintes['alpha_1'], 2: np.degrees(alpha2), 3: contraintes['alpha_3']}
-    vitesses['alpha_relatif'] = {1: np.degrees(alpha_rel1), 2: np.degrees(alpha_rel2), 3: np.degrees(alpha_rel3)}
+    donnees['alpha'] = {1: contraintes['alpha_1'], 2: np.degrees(alpha2), 3: contraintes['alpha_3']}
+    donnees['alpha_relatif'] = {1: np.degrees(alpha_rel1), 2: np.degrees(alpha_rel2), 3: np.degrees(alpha_rel3)}
 
     print(f"Régime : {rpm:.0f} RPM")
     print(f"Vitesses Va [m/s] : Va1={Va1:.2f} | Va2={Va2:.2f} | Va3={Va3:.2f}")
@@ -239,8 +237,8 @@ def plot_geometrie_turbine():
 
 def tracer_limites_rpm():
 
-    A3 = geom['A'][3]
-    rpm = vitesses['Rpm']
+    A3 = donnees['A'][3]
+    rpm = donnees['Rpm']
 
     # Calcul des RPM correspondants aux contraintes AN^2 max et min
     N_min = np.sqrt(contraintes['AN2_min'] / A3)
@@ -279,17 +277,17 @@ def tracer_limites_rpm():
 
 def tracer_triangles_vitesses():
     # 1. Extraction des variables du dictionnaire 'vitesses' (qui doit être global ici)
-    U1 = vitesses['U'][1]
-    U2 = vitesses['U'][2]
-    U3 = vitesses['U'][3]
+    U1 = donnees['U'][1]
+    U2 = donnees['U'][2]
+    U3 = donnees['U'][3]
     
-    Va1 = vitesses['Va'][1]
-    Va2 = vitesses['Va'][2]
-    Va3 = vitesses['Va'][3]
+    Va1 = donnees['Va'][1]
+    Va2 = donnees['Va'][2]
+    Va3 = donnees['Va'][3]
 
-    Vu1 = vitesses['Vu'][1]
-    Vu2 = vitesses['Vu'][2]
-    Vu3 = vitesses['Vu'][3]
+    Vu1 = donnees['Vu'][1]
+    Vu2 = donnees['Vu'][2]
+    Vu3 = donnees['Vu'][3]
     
     # 2. Création de la figure avec 3 sous-graphiques alignés
     fig, axs = plt.subplots(1, 3, figsize=(16, 5))
@@ -348,34 +346,34 @@ def etape_2(donnees_hpt):
     print(f"\nÉTAPES 2.a, b, c : Répartition des triangles de vitesse")
 
     #Valeurs calculées précédemment
-    Vu_1 = vitesses['Vu'][1]
-    Vu_2 = vitesses['Vu'][2]
-    Vu_3 = vitesses['Vu'][3]
-    rm_1 = geom['r_m'][1]
-    rm_2 = geom['r_m'][2]
-    rm_3 = geom['r_m'][3]
-    Pm_1 = Var['P'][1]
-    Pm_2 = Var['P'][2]
-    Pm_3 = Var['P'][3]
-    pm_1 = Var['p'][1]
-    pm_2 = Var['p'][2]
-    pm_3 = Var['p'][3]
-    alpham_1 = Var['alpha'][1]
-    alpham_2 = Var['alpha'][2]
-    alpham_3 = Var['alpha'][3]
-    rr_1 = geom['r_root'][1]
-    rr_2 = geom['r_root'][2]
-    rr_3 = geom['r_root'][3]
-    rt_1 = geom['r_tip'][1]
-    rt_2 = geom['r_tip'][2]
-    rt_3 = geom['r_tip'][3]
+    Vu_1 = donnees['Vu'][1]
+    Vu_2 = donnees['Vu'][2]
+    Vu_3 = donnees['Vu'][3]
+    rm_1 = donnees['r_m'][1]
+    rm_2 = donnees['r_m'][2]
+    rm_3 = donnees['r_m'][3]
+    Pm_1 = donnees['P'][1]
+    Pm_2 = donnees['P'][2]
+    Pm_3 = donnees['P'][3]
+    pm_1 = donnees['p'][1]
+    pm_2 = donnees['p'][2]
+    pm_3 = donnees['p'][3]
+    alpham_1 = donnees['alpha'][1]
+    alpham_2 = donnees['alpha'][2]
+    alpham_3 = donnees['alpha'][3]
+    rr_1 = donnees['r_root'][1]
+    rr_2 = donnees['r_root'][2]
+    rr_3 = donnees['r_root'][3]
+    rt_1 = donnees['r_tip'][1]
+    rt_2 = donnees['r_tip'][2]
+    rt_3 = donnees['r_tip'][3]
     f_t_m = contraintes['reaction'] # facteur de travail moyen
-    Va_1 = vitesses['Va'][1]
-    Va_2 = vitesses['Va'][2]
-    Va_3 = vitesses['Va'][3]
-    To_1 = Var['To'][1]
-    To_2 = Var['To'][2]
-    To_3 = Var['To'][3]
+    Va_1 = donnees['Va'][1]
+    Va_2 = donnees['Va'][2]
+    Va_3 = donnees['Va'][3]
+    To_1 = donnees['To'][1]
+    To_2 = donnees['To'][2]
+    To_3 = donnees['To'][3]
     cp = donnees_hpt['cp']
 
 
@@ -442,31 +440,20 @@ def etape_2(donnees_hpt):
 
 def etape_3(donnees_hpt):
     print(f"\nÉTAPES 3: Paramètres des aubes")
-    
-    # CORRECTION 1: Ces paramètres sont dans 'contraintes' et non 'geom'
+   
     fs = contraintes['stator_h_c']
     fr = contraintes['rotor_h_c']
     zweifels = contraintes['stator_zweifel']
     zweifelr = contraintes['rotor_zweifel']
-    
-    # CORRECTION 2: Correction de l'indice pour h3 (était r_root[2])
-    h1 = geom['r_tip'][1] - geom['r_root'][1]
-    h2 = geom['r_tip'][2] - geom['r_root'][2]
-    h3 = geom['r_tip'][3] - geom['r_root'][3] 
-    
-    rm2 = geom['r_m'][2]
-    rm3 = geom['r_m'][3]
-
-    # --- Extraction des angles pour Zweifel ---
-    # STATOR (Repère Absolu) - On prend la valeur absolue pour additionner la déflexion totale
-    alpha_s1 = abs(deg2rad(vitesses['alpha'][1]))
-    alpha_s2 = abs(deg2rad(vitesses['alpha'][2]))
-    
-    # ROTOR (Repère Relatif) - Le rotor "voit" l'angle relatif
-    alpha_r2 = abs(deg2rad(vitesses['alpha_relatif'][2]))
-    alpha_r3 = abs(deg2rad(vitesses['alpha_relatif'][3]))
-
-    # Calcul des angles de calage (stagger angle - gamma) approximés
+    h1 = donnees['r_tip'][1] - donnees['r_root'][1]
+    h2 = donnees['r_tip'][2] - donnees['r_root'][2]
+    h3 = donnees['r_tip'][3] - donnees['r_root'][3] 
+    rm2 = donnees['r_m'][2]
+    rm3 = donnees['r_m'][3]
+    alpha_s1 = abs(deg2rad(donnees['alpha'][1]))
+    alpha_s2 = abs(deg2rad(donnees['alpha'][2]))
+    alpha_r2 = abs(deg2rad(donnees['alpha_relatif'][2]))
+    alpha_r3 = abs(deg2rad(donnees['alpha_relatif'][3]))
     gamma_s = (alpha_s1 + alpha_s2) / 2
     gamma_r = (alpha_r2 + alpha_r3) / 2
 
@@ -482,11 +469,8 @@ def etape_3(donnees_hpt):
     cas = cs * np.cos(gamma_s)
     car = cr * np.cos(gamma_r)
 
-    # CORRECTION 3: Formule de Zweifel exacte basée sur ton image (en isolant le pas 's')
-    # Stator : s = (Zw * c_a) / (2 * (tan(a1) + tan(a2)) * cos^2(a2))
+    # Calcul du pas
     pas_s = (zweifels * cas) / (2 * (np.tan(alpha_s1) + np.tan(alpha_s2)) * (np.cos(alpha_s2))**2)
-    
-    # Rotor : s = (Zw * c_a) / (2 * (tan(ar2) + tan(ar3)) * cos^2(ar3))
     pas_r = (zweifelr * car) / (2 * (np.tan(alpha_r2) + np.tan(alpha_r3)) * (np.cos(alpha_r3))**2)
 
     # Calcul du nombre d'ailettes (Périmètre moyen / pas)
