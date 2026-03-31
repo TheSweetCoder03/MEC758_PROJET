@@ -98,50 +98,29 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     # Thermodynamique de la station 2 (fixée par la réaction)
     T2 = T3 + (contraintes['reaction'] * dh0) / cp
     V2 = np.sqrt(2 * cp * (T01 - T2))
-    lambda_N = (pertes['stator'] * perte_totale) / (0.5 * V2**2)
-    
-    r_m2_guess = r_m3
-    
-    def equation_rm2(rm2_hypothese):
-        r_in = rm2_hypothese[0] 
-        U2_temp = omega * r_in
-        Vu2_temp = (dh0 + U3 * Vu3) / U2_temp
-        Va2_temp = np.sqrt(V2**2 - Vu2_temp**2)
-        M2_temp = V2 / np.sqrt(gamma * R_gaz * T2)
-        YN_temp = lambda_N * (1 + 0.5 * gamma * M2_temp**2)
-        PR2_temp = (1 + ((gamma - 1) / 2) * M2_temp**2)**(gamma / (gamma - 1))
-        P2_temp = P01 / (PR2_temp + YN_temp * (PR2_temp - 1))
-        rho2_temp = P2_temp / (R_gaz * T2)
-        A2_temp = m_dot / (rho2_temp * Va2_temp)
-        if racine_constante:
-            r_root2_temp = r_root3
-            r_tip2_temp = np.sqrt((A2_temp / np.pi) + r_root2_temp**2)
-        else:
-            r_tip2_temp = r_tip3
-            r_root2_temp = np.sqrt(r_tip2_temp**2 - (A2_temp / np.pi))
-        r_out = (r_root2_temp + r_tip2_temp) / 2.0
-        return r_out - r_in
-
-    rm2_solution = fsolve(equation_rm2, x0=[r_m2_guess], xtol=tolerance)
-    r_m2 = rm2_solution[0]
+    T02 = T01
     
     # Calcul des variables avec la solution trouvée
-    U2 = omega * r_m2
-    Vu2 = (dh0 + U3 * Vu3) / U2
-    Va2 = np.sqrt(V2**2 - Vu2**2)
-    M2 = V2 / np.sqrt(gamma * R_gaz * T2)
-    Y_N = lambda_N * (1 + 0.5 * gamma * M2**2)
-    PR2 = (1 + ((gamma - 1) / 2) * M2**2)**(gamma / (gamma - 1))
-    P2 = P01 / (PR2 + Y_N * (PR2 - 1))
-    rho2 = P2 / (R_gaz * T2)
-    A2 = m_dot / (rho2 * Va2)
-    if racine_constante:
-        r_root2 = r_root3
-        r_tip2 = np.sqrt((A2 / np.pi) + r_root2**2)
-    else:
-        r_tip2 = r_tip3
-        r_root2 = np.sqrt(r_tip2**2 - (A2 / np.pi))
+    Va2 = 140 #On pose Va2 égal à 112m/s comme point de depart
 
+    Vu2 = np.sqrt(V2**2 - Va2**2)
+    U2 = (dh0 + U3 * Vu3) / Vu2
+    r_m2 = U2 / omega
+    r_tip2 = r_tip3
+    r_root2 = 2 * r_m2 - r_tip2
+    A2 = np.pi * (r_tip2**2 - r_root2**2)
+    rho2 = m_dot / (A2 * Va2)
+    P2 = rho2 * R_gaz * T2
+    P02 = P2 * (T02 / T2)**(gamma / (gamma -1))
+    Y_N = (P01 - P02) / (P02 - P2)
+
+    T02 = T01
+    T2p = T01 * (P2/P01)**((gamma -1)/gamma)
+    M2 = V2 / np.sqrt(gamma * R_gaz * T2)
+    lambda_N = (T2 - T2p) / (V2**2 / (2 * cp))
+    Y_N_2 = lambda_N * (1+0.5*gamma * M2**2)
+ 
+   
     # --- CALCUL DES ANGLES (ABSOLUS ET RELATIFS) ---
     # Station 1
     Vru1 = Vu1 - U1
@@ -161,7 +140,11 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
 
     U_moyen = (U2 + U3) / 2.0 
     psi = (2 * dh0) / (U_moyen**2)
-    lambda_R = (pertes['rotor'] * perte_totale) / (0.5 * Vr3**2)
+
+    T3pp = T2 * (P3 / P2)**((gamma - 1)/ gamma)
+    lambda_R = (T3 - T3pp) / (Vr3**2 / (2 * cp))
+    Mr3 = Vr3 / np.sqrt(gamma * R_gaz * T3)
+    Y_R = lambda_R * (1 + 0.5 * gamma * Mr3**2) 
 
     # --- Sauvegarde structurée ---
     donnees['P'] = {1: P1, 2: P2, 3: P3}
@@ -181,6 +164,8 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     donnees['Va'] = {1: Va1, 2: Va2, 3: Va3}
     donnees['Vu'] = {1: Vu1, 2: Vu2, 3: Vu3}
     donnees['Vr'] = {1: Vr1, 2: Vr2, 3: Vr3}
+
+    donnees['Y'] = {1: Y_R, 2: Y_N, 3: Y_N_2}
     
     # NOUVEAU: Sauvegarde distincte de l'absolu et du relatif
     donnees['alpha'] = {1: contraintes['alpha_1'], 2: np.degrees(alpha2), 3: contraintes['alpha_3']}
@@ -190,6 +175,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     print(f"Vitesses Va [m/s] : Va1={Va1:.2f} | Va2={Va2:.2f} | Va3={Va3:.2f}")
     print(f"Angles Abs.[deg]  : Alpha1={contraintes['alpha_1']:.2f}° | Alpha2={np.degrees(alpha2):.2f}° | Alpha3={contraintes['alpha_3']:.2f}°")
     print(f"Angles Rel.[deg]  : Alpha_rel1={np.degrees(alpha_rel1):.2f}° | Alpha_rel2={np.degrees(alpha_rel2):.2f}° | Alpha_rel3={np.degrees(alpha_rel3):.2f}°")
+    print(f"Coefficient de pertes : Rotor (Y_R) = {Y_R:.2f}, Stator (Y_N) = {Y_N:.2f}, Stator (Y_N_2) = {Y_N_2:.2f}  ")
 
 def plot_geometrie_turbine():
     # Extraction des données du dictionnaire
