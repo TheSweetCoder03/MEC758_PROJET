@@ -399,7 +399,7 @@ def etape_2(donnees_hpt):
         V = np.sqrt(j[7]**2 + Vu**2)
         T = j[8] - V**2 / (2*cp)
         P = (((j[9]**2)*j[4])/2) * (1/j[1]**2 - 1/r**2) + j[2]
-        alpha = np.arctan(j[11] / r)
+        alpha = np.degrees(np.arctan(j[11] / r))
 
         #Faire graphiques
 
