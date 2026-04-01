@@ -28,7 +28,6 @@ contraintes = {
 }
 
 donnees = {}       # Pour stocker des variables
-pertes = {'stator': 0.4,'rotor' : 0.6}
 
 def deg2rad(angle):
     return angle * np.pi / 180.0
@@ -151,6 +150,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
 
     # --- Sauvegarde structurée ---
     donnees['P'] = {1: P1, 2: P2, 3: P3}
+    donnees['M'] = {1: M1, 2: M2, 3: M3}
     donnees['To'] = {1: T01, 2: T01, 3: T03}
     donnees['p'] = {1: rho1, 2: rho2, 3: rho3}
     donnees['alpha'] = {1: alpha1_rad, 2: alpha2, 3: deg2rad(contraintes['alpha_3'])}
@@ -430,6 +430,7 @@ def etape_2(donnees_hpt):
         plt.show()
 
 def etape_3(donnees_hpt):
+    
     print(f"\nÉTAPES 3: Paramètres des aubes")
    
     fs = contraintes['stator_h_c']
@@ -449,12 +450,12 @@ def etape_3(donnees_hpt):
     gamma_r = (alpha_r2 + alpha_r3) / 2
 
     # Calcul hauteur moyenne ailette
-    hs = (h1 + h2) / 2
-    hr = (h2 + h3) / 2
+    hms = (h1 + h2) / 2
+    hmr = (h2 + h3) / 2
 
     # Calcul des cordes (c = h / Facteur de forme)
-    cs = hs / fs
-    cr = hr / fr
+    cs = hms / fs
+    cr = hmr / fr
     
     # Calcul de la corde axiale (c_a = c * cos(gamma))
     cas = cs * np.cos(gamma_s)
@@ -467,6 +468,123 @@ def etape_3(donnees_hpt):
     # Calcul du nombre d'ailettes (Périmètre moyen / pas)
     ns = 2 * np.pi * rm2 / pas_s
     nr = 2 * np.pi * rm3 / pas_r
+
+    # --- Sauvegarde structurée ---
+    donnees['hm'] = {'stator': hms, 'rotor': hmr}
+    donnees['c'] = {'stator': cs, 'rotor': cr}
+    donnees['ca'] = {'stator': cas, 'rotor': car}
     
     print(f"Stator | Corde axiale: {cas:.4f} m | Pas: {pas_s:.4f} m | Aubes: {ns:.1f} -> {int(np.ceil(ns))} aubes")
     print(f"Rotor  | Corde axiale: {car:.4f} m | Pas: {pas_r:.4f} m | Aubes: {nr:.1f} -> {int(np.ceil(nr))} aubes")
+
+def etape_4(donnees_hpt):
+    # Extraction des variables du dictionnaire 'donnees'
+    beta_1 = donnees['alpha_relatif'][1]
+    beta_2 = donnees['alpha_relatif'][2]
+    beta_3 = donnees['alpha_relatif'][3]
+
+    alpha_1 = donnees['alpha'][1]
+    alpha_2 = donnees['alpha'][2]
+    alpha_3 = donnees['alpha'][3]
+
+    P1 = donnees['P'][1]
+    P2 = donnees['P'][2]
+    P3 = donnees['P'][3]
+
+    M1 = donnees['M'][1]
+    M2 = donnees['M'][2]
+    M3 = donnees['M'][3]
+
+    h1 = donnees['h'][1]
+    h2 = donnees['h'][2]
+    h3 = donnees['h'][3]
+
+    h1 = donnees['h'][1]
+    h2 = donnees['h'][2]
+    h3 = donnees['h'][3]
+
+    h_s = donnees['hm']['stator']
+    h_r = donnees['hm']['rotor']
+
+    c_s = donnees['c']['stator']
+    c_r = donnees['c']['rotor']
+
+    ca_s = donnees['ca']['stator']
+    ca_r = donnees['ca']['rotor']
+
+    rr_m_s = 1
+    rt_m_s = 1
+
+    Re_s = 1
+    Re_r = 1
+    
+    M1_hub = 1
+
+    # Extraction des variables du dictionnaire 'contrainte'
+    y = 1.31
+
+    # Constante provenant de la publication Kacker Okapuu 1982
+    Yp_1 = 1
+    Yp_2 = 1
+    d_tet_0 = 1
+    d_tet_alpha = 1
+
+    # Paramètre de conception
+    nbre_seal = 3 # Nombre de seal au bout ailette?
+    tmax = 0.5    # Épaisseur max ailette
+    k = 0.1       # Jeu radial ailette
+
+    # Perte du profil (Yp)
+    Yp_AMDC = (Yp_1 + abs(beta_1 / alpha_1) * (beta_1 / alpha_1) * (Yp_2 - Yp_1)) * ((tmax / c_s) / 0.2) * (beta_1 / alpha_1)
+
+    if M2 > 0.2:
+        k1 = 1 - 1.25 * abs(M2 - 0.2)
+    else:
+        k1 = 1
+    k2 = abs(M1 / M2)**2
+    kp = 1 - k2 * (1 - k1)
+
+    dP_hub = 0.75 * (M1_hub - 0.4)**1.75
+    dp_shock = (rr_m_s / rt_m_s) * dP_hub
+    Yshock = dp_shock * (P1 / P2) * ((1 - (1 + (y - 1) / 2 * M1**2 )**(y / (y - 1))) / (1 - (1 + (y - 1) / 2 * M2**2 )**(y / (y - 1))))
+    
+    Yp_moderne = 0.914 * ((2 / 3) * Yp_AMDC * kp + Yshock)
+
+    # Perte due aux écoulement secondaire (Ys)
+    if (h_s / c_s) <= 2:
+        f_ar = (1 - 0.25 * np.sqrt(2 - (h_s / c_s))) / (h_s / c_s)
+    else:
+        f_ar = 1 / (h_s / c_s)
+
+    alpha_m = np.tan((1 / 2) * (np.tan(alpha_1) - np.tan(alpha_2)))
+
+    Cl_sc = 2 * (np.tan(alpha_1) + np.tan(alpha_2)) * np.cos(alpha_m)
+
+    Ys_AMDC = 0.0334 * f_ar * (np.cos(alpha_2) / np.cos(beta_1)) * Cl_sc**2 * (np.cos(alpha_2))**2 / (np.cos(alpha_m))**3
+
+    k3 = (1 / (h_s / ca_s))**2
+    ks = 1 - (k3 * (1 - kp))    
+    
+    Ys_moderne = 1.2 * Ys_AMDC * ks
+
+    # Perte annulaire ( Ytet)
+    d_tet = d_tet_0 + abs(beta_1 / alpha_2) * (beta_1 / alpha_1) * (d_tet_alpha - d_tet_0)
+
+    Ytet = ((1 - (y - 1) / 2 * M2 * (1 / (1 - d_tet) - 1))**(-y / (y - 1)) - 1) / (1 + (1 + ((y - 1) / 2) * M2**2))**(-y / (y - 1))
+
+    # Perte due au jeu radial (Ytc)
+    k_2 = k / (nbre_seal)**0.42
+
+    Ytc = 0.37 * (c_s / h_s) * (k_2 / c_s)**0.78 * (Cl_sc)**2 * ((np.cos(alpha_2)**2) / (np.cos(alpha_m))**3)
+
+    # Perte totale (Ytot)
+    if Re_s <= 200000:
+        f_re = (Re_s / 200000)**-0.4
+    elif 200000 < Re_s <= 1000000:
+        f_re = 1
+    elif Re_s > 1000000:
+        f_re = (Re_s / 1000000)**-0.2
+
+    Ytot = Yp_moderne * f_re + Ys_moderne + Ytet + Ytc
+
+    print(f"Coefficient de perte stator : {Ytot:.4f}")
