@@ -36,6 +36,12 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     print(f"\nÉTAPES 1.a, 1.b, 1.c : Géométrie et Triangles")
     print(f"Stratégie de veine : {'Racine Constante' if racine_constante else 'Bout (Tip) Constant'}")
     
+    # Constantes de Sutherland (Air/Gaz)
+    mu0 = 1.716e-5
+    T0_suth = 273.15
+    S = 110.4
+    
+    
     # Récupération des données
     gamma = donnees_hpt['gamma']
     R_gaz = donnees_hpt['cp'] * (gamma - 1) / gamma
@@ -143,6 +149,10 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     P0r3 = P3 * (1 + ((gamma -1)/2) * Mr3**2)**(gamma / (gamma -1))
     Y_R = (P0r2 - P0r3) / (P0r3 - P3)
 
+    # Viscosité stator/rotor
+    Visc_s = mu0 * (T2 / T0_suth)**1.5 * (T0_suth + S) / (T2 + S)
+    Visc_r = mu0 * (T3 / T0_suth)**1.5 * (T0_suth + S) / (T3 + S)
+
     #Calcul du rendement
     lambda_N = Y_N / (1 + 0.5 * gamma * M2**2)
     lambda_R = Y_R / (1 + 0.5 * gamma * Mr3**2)
@@ -170,8 +180,8 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
 
     donnees['Y'] = {1: Y_R, 2: Y_N}
     donnees['nst'] = rendement
+    donnees['Visc'] = {'stator': Visc_s, 'rotor': Visc_r}
     
-    # NOUVEAU: Sauvegarde distincte de l'absolu et du relatif
     donnees['alpha'] = {1: contraintes['alpha_1'], 2: np.degrees(alpha2), 3: contraintes['alpha_3']}
     donnees['alpha_relatif'] = {1: np.degrees(alpha_rel1), 2: np.degrees(alpha_rel2), 3: np.degrees(alpha_rel3)}
 
@@ -369,7 +379,8 @@ def etape_2(donnees_hpt):
     gamma = donnees_hpt['gamma']
     R_gaz = donnees_hpt['cp'] * (gamma - 1) / gamma
 
-
+    # Initialisation variable M_hub
+    donnees['M_hub'] = {}
 
     #Hypothèse de Free Vortex
     n = -1
@@ -386,7 +397,7 @@ def etape_2(donnees_hpt):
         i.extend([k1,k2,k3])
 
     #Calculer variables le long du rayon
-    for j in [stat_1, stat_2, stat_3]:
+    for idx, j in enumerate([stat_1, stat_2, stat_3], start=1):
         r = np.linspace(j[5], j[6], 100)
         f_t = 1 - j[10] / r**2
         Vu = j[9] / r
@@ -396,7 +407,7 @@ def etape_2(donnees_hpt):
         alpha = np.degrees(np.arctan(j[11] / r))
         a = np.sqrt(gamma * R_gaz * T)
         M = V / a
-        donnees['M_hub'][i] = M
+        donnees['M_hub'][idx] = M[0]
 
         #Faire graphiques
 
@@ -484,6 +495,7 @@ def etape_3(donnees_hpt):
     print(f"Rotor  | Corde axiale: {car:.4f} m | Pas: {pas_r:.4f} m | Aubes: {nr:.1f} -> {int(np.ceil(nr))} aubes")
 
 def etape_4(donnees_hpt):
+    
     # Extraction des variables du dictionnaire 'donnees'
     beta_1 = donnees['alpha_relatif'][1]
     beta_2 = donnees['alpha_relatif'][2]
@@ -500,6 +512,12 @@ def etape_4(donnees_hpt):
     M1 = donnees['M'][1]
     M2 = donnees['M'][2]
     M3 = donnees['M'][3]
+
+    V2 = np.sqrt((donnees['Va'][2])**2 + (donnees['Vu'][2])**2)
+    Vr3 = donnees['Vr'][3]
+
+    rho2 = donnees['p'][2]
+    rho3 = donnees['p'][3]
 
     M1_hub = donnees['M_hub'][1]
     M2_hub = donnees['M_hub'][2]
@@ -522,25 +540,31 @@ def etape_4(donnees_hpt):
     ca_s = donnees['ca']['stator']
     ca_r = donnees['ca']['rotor']
 
-    rr_m_s = 1
-    rt_m_s = 1
+    rrm_s = (donnees['r_root'][1] + donnees['r_root'][2]) / 2 #Rayon à la racine moyen au stator
+    rtm_s = (donnees['r_tip'][1] + donnees['r_tip'][2]) / 2   #Rayon à la pointe moyen au stator
+    rrm_r = (donnees['r_root'][2] + donnees['r_root'][3]) / 2 #Rayon à la racine moyen au stator
+    rtm_r = (donnees['r_tip'][2] + donnees['r_tip'][3]) / 2   #Rayon à la pointe moyen au stator
 
-    Re_s = 1
-    Re_r = 1
+    Visc_s = donnees['Visc']['stator']
+    Visc_r = donnees['Visc']['rotor']
 
-    # Extraction des variables du dictionnaire 'donnees_hpt'
-    y = donnees_hpt['gamma']
-
-    # Constante provenant de la publication Kacker Okapuu 1982
-    Yp_1 = 1
-    Yp_2 = 1
-    d_tet_0 = 1
-    d_tet_alpha = 1
+    # Nombre de reynold stator/rotor
+    Re_s = (rho2 * V2 * c_s) / Visc_s
+    Re_r = (rho3 * Vr3 * c_r) / Visc_r
 
     # Paramètre de conception
     nbre_seal = 3 # Nombre de seal au bout ailette?
     tmax = 0.5    # Épaisseur max ailette
     k = 0.1       # Jeu radial ailette
+
+    # Extraction des variables du dictionnaire 'donnees_hpt'
+    y = donnees_hpt['gamma']
+
+    # Variable provenant des tableaux de la publication Kacker Okapuu 1982
+    Yp_1 = 1
+    Yp_2 = 1
+    d_tet_0 = 1
+    d_tet_alpha = 1
 
     # Perte du profil (Yp)
     Yp_AMDC = (Yp_1 + abs(beta_1 / alpha_1) * (beta_1 / alpha_1) * (Yp_2 - Yp_1)) * ((tmax / c_s) / 0.2) * (beta_1 / alpha_1)
@@ -553,7 +577,7 @@ def etape_4(donnees_hpt):
     kp = 1 - k2 * (1 - k1)
 
     dP_hub = 0.75 * (M1_hub - 0.4)**1.75
-    dp_shock = (rr_m_s / rt_m_s) * dP_hub
+    dp_shock = (rrm_s / rtm_s) * dP_hub
     Yshock = dp_shock * (P1 / P2) * ((1 - (1 + (y - 1) / 2 * M1**2 )**(y / (y - 1))) / (1 - (1 + (y - 1) / 2 * M2**2 )**(y / (y - 1))))
     
     Yp_moderne = 0.914 * ((2 / 3) * Yp_AMDC * kp + Yshock)
