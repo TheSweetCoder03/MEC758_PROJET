@@ -102,6 +102,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     V2 = np.sqrt(2 * cp * (T01 - T2))
     T02 = T01
 
+    #Perte dans le stator
     A2 = A3
 
     T2s = T2 - perte_stator / cp
@@ -136,14 +137,17 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     alpha_rel3 = np.arctan(Vru3 / Va3)
     Vr3 = np.sqrt(Va3**2 + Vru3**2)
 
-    U_moyen = (U2 + U3) / 2.0 
-    psi = (2 * dh0) / (U_moyen**2)
-
+    # Perte dans le rotor
     Mr2 = Vr2 / np.sqrt(gamma * R_gaz * T2)
     P0r2 = P2 * (1 + ((gamma -1)/2) * Mr2**2)**(gamma / (gamma -1))
     Mr3 = Vr3 / np.sqrt(gamma * R_gaz * T3)
     P0r3 = P3 * (1 + ((gamma -1)/2) * Mr3**2)**(gamma / (gamma -1))
     Y_R = (P0r2 - P0r3) / (P0r3 - P3)
+
+    #Calcul du rendement
+    lambda_N = Y_N / (1 + 0.5 * gamma * M2**2)
+    lambda_R = Y_R / (1 + 0.5 * gamma * Mr3**2)
+    rendement = 1 / (1 + (lambda_N * V2**2 + lambda_R * Vr3**2) / (2 * cp * (T01 - T03)))
 
     # --- Sauvegarde structurée ---
     donnees['P'] = {1: P1, 2: P2, 3: P3}
@@ -165,6 +169,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     donnees['Vr'] = {1: Vr1, 2: Vr2, 3: Vr3}
 
     donnees['Y'] = {1: Y_R, 2: Y_N}
+    donnees['nst'] = rendement
     
     # NOUVEAU: Sauvegarde distincte de l'absolu et du relatif
     donnees['alpha'] = {1: contraintes['alpha_1'], 2: np.degrees(alpha2), 3: contraintes['alpha_3']}
@@ -175,6 +180,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     print(f"Angles Abs.[deg]  : Alpha1={contraintes['alpha_1']:.2f}° | Alpha2={np.degrees(alpha2):.2f}° | Alpha3={contraintes['alpha_3']:.2f}°")
     print(f"Angles Rel.[deg]  : Alpha_rel1={np.degrees(alpha_rel1):.2f}° | Alpha_rel2={np.degrees(alpha_rel2):.2f}° | Alpha_rel3={np.degrees(alpha_rel3):.2f}°")
     print(f"Coefficient de pertes : Rotor (Y_R) = {Y_R:.2f}, Stator (Y_N) = {Y_N:.2f}")
+    print(f"Rendement de l'étage: {rendement:.2f}")
 
 def plot_geometrie_turbine():
     # Extraction des données du dictionnaire
