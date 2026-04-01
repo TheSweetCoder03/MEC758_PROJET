@@ -366,6 +366,9 @@ def etape_2(donnees_hpt):
     To_2 = donnees['To'][2]
     To_3 = donnees['To'][3]
     cp = donnees_hpt['cp']
+    gamma = donnees_hpt['gamma']
+    R_gaz = donnees_hpt['cp'] * (gamma - 1) / gamma
+
 
 
     #Hypothèse de Free Vortex
@@ -391,6 +394,9 @@ def etape_2(donnees_hpt):
         T = j[8] - V**2 / (2*cp)
         P = (((j[9]**2)*j[4])/2) * (1/j[1]**2 - 1/r**2) + j[2]
         alpha = np.degrees(np.arctan(j[11] / r))
+        a = np.sqrt(gamma * R_gaz * T)
+        M = V / a
+        donnees['M_hub'][i] = M
 
         #Faire graphiques
 
@@ -495,6 +501,10 @@ def etape_4(donnees_hpt):
     M2 = donnees['M'][2]
     M3 = donnees['M'][3]
 
+    M1_hub = donnees['M_hub'][1]
+    M2_hub = donnees['M_hub'][2]
+    M3_hub = donnees['M_hub'][3]
+
     h1 = donnees['h'][1]
     h2 = donnees['h'][2]
     h3 = donnees['h'][3]
@@ -517,11 +527,9 @@ def etape_4(donnees_hpt):
 
     Re_s = 1
     Re_r = 1
-    
-    M1_hub = 1
 
-    # Extraction des variables du dictionnaire 'contrainte'
-    y = 1.31
+    # Extraction des variables du dictionnaire 'donnees_hpt'
+    y = donnees_hpt['gamma']
 
     # Constante provenant de la publication Kacker Okapuu 1982
     Yp_1 = 1
