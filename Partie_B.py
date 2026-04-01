@@ -111,8 +111,14 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     M2 = V2 / np.sqrt(gamma * R_gaz * T2)
     P02 = P2 * (1 + (gamma - 1) * M2**2 /2)**(gamma / (gamma -1))
     Y_N = (P01 - P02) / (P02 - P2)
+
+    Vu2 = np.sqrt(V2**2 - Va2**2)
+    U2 = (dh0 + U3 * Vu3) / Vu2
+    r_m2 = U2 / omega
+    r_root2 = 1.02 * r_root3
+    r_tip2 = r_m2 * 2 - r_root2
  
-   
+
     # --- CALCUL DES ANGLES (ABSOLUS ET RELATIFS) ---
     # Station 1
     Vru1 = Vu1 - U1
@@ -133,10 +139,11 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     U_moyen = (U2 + U3) / 2.0 
     psi = (2 * dh0) / (U_moyen**2)
 
-    T3pp = T2 * (P3 / P2)**((gamma - 1)/ gamma)
-    lambda_R = (T3 - T3pp) / (Vr3**2 / (2 * cp))
+    Mr2 = Vr2 / np.sqrt(gamma * R_gaz * T2)
+    P0r2 = P2 * (1 + ((gamma -1)/2) * Mr2**2)**(gamma / (gamma -1))
     Mr3 = Vr3 / np.sqrt(gamma * R_gaz * T3)
-    Y_R = lambda_R * (1 + 0.5 * gamma * Mr3**2) 
+    P0r3 = P3 * (1 + ((gamma -1)/2) * Mr3**2)**(gamma / (gamma -1))
+    Y_R = (P0r2 - P0r3) / (P0r3 - P3)
 
     # --- Sauvegarde structurée ---
     donnees['P'] = {1: P1, 2: P2, 3: P3}
