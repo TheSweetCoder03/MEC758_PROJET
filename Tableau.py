@@ -43,15 +43,17 @@ interp_f2 = RegularGridInterpolator((sc_axis_f2, alpha2_f2), data_f2, bounds_err
 interp_f14 = RegularGridInterpolator((type_f14, to_axis), data_f14, method='linear', bounds_error=False, fill_value=None)
 
 def extraire_donnee_graphique(x, y, figure=1):
+    point = [[x, y]]
+    
     if figure == 1:
-        return float(interp_f1([x, y]))
+        return interp_f1(point).item()
+    
     elif figure == 2:
-        return float(interp_f2([x, y]))
+        return interp_f2(point).item()
+    
     elif figure == 140: # Figure 14 - Axial Entry Nozzle
-        return float(interp_f14([0, x]))
+        return interp_f14([[0, x]]).item()
+    
     elif figure == 141: # Figure 14 - Impulse Blading
-        return float(interp_f14([1, x]))
+        return interp_f14([[1, x]]).item()
 
-# --- EXEMPLE D'APPEL ---
-#phi2_beta0 = extraire_donnee_graphique(x=0.12, y=None, figure=140) # t/o = 0.12
-#phi2_beta_alpha2 = extraire_donnee_graphique(x=0.12, y=None, figure=141)
