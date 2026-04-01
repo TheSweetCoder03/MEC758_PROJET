@@ -94,31 +94,23 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     eta_hpt = donnees_hpt['eta_iso']
     dh0_is = dh0 / eta_hpt
     perte_totale = dh0_is - dh0
+    perte_stator = (1 - contraintes['reaction']) * perte_totale
+    perte_rotor = contraintes['reaction'] * perte_totale
 
     # Thermodynamique de la station 2 (fixée par la réaction)
     T2 = T3 + (contraintes['reaction'] * dh0) / cp
     V2 = np.sqrt(2 * cp * (T01 - T2))
     T02 = T01
-    
-    # Calcul des variables avec la solution trouvée
-    Va2 = 140 #On pose Va2 égal à 112m/s comme point de depart
 
-    Vu2 = np.sqrt(V2**2 - Va2**2)
-    U2 = (dh0 + U3 * Vu3) / Vu2
-    r_m2 = U2 / omega
-    r_tip2 = r_tip3
-    r_root2 = 2 * r_m2 - r_tip2
-    A2 = np.pi * (r_tip2**2 - r_root2**2)
-    rho2 = m_dot / (A2 * Va2)
-    P2 = rho2 * R_gaz * T2
-    P02 = P2 * (T02 / T2)**(gamma / (gamma -1))
-    Y_N = (P01 - P02) / (P02 - P2)
+    A2 = A3
 
-    T02 = T01
-    T2p = T01 * (P2/P01)**((gamma -1)/gamma)
+    T2s = T2 - perte_stator / cp
+    P2 = P01 * (T2s / T01)**(gamma / (gamma - 1))
+    rho2 = P2 / (R_gaz * T2)
+    Va2 = m_dot / (rho2 * A2)
     M2 = V2 / np.sqrt(gamma * R_gaz * T2)
-    lambda_N = (T2 - T2p) / (V2**2 / (2 * cp))
-    Y_N_2 = lambda_N * (1+0.5*gamma * M2**2)
+    P02 = P2 * (1 + (gamma - 1) * M2**2 /2)**(gamma / (gamma -1))
+    Y_N = (P01 - P02) / (P02 - P2)
  
    
     # --- CALCUL DES ANGLES (ABSOLUS ET RELATIFS) ---
@@ -165,7 +157,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     donnees['Vu'] = {1: Vu1, 2: Vu2, 3: Vu3}
     donnees['Vr'] = {1: Vr1, 2: Vr2, 3: Vr3}
 
-    donnees['Y'] = {1: Y_R, 2: Y_N, 3: Y_N_2}
+    donnees['Y'] = {1: Y_R, 2: Y_N}
     
     # NOUVEAU: Sauvegarde distincte de l'absolu et du relatif
     donnees['alpha'] = {1: contraintes['alpha_1'], 2: np.degrees(alpha2), 3: contraintes['alpha_3']}
@@ -175,7 +167,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     print(f"Vitesses Va [m/s] : Va1={Va1:.2f} | Va2={Va2:.2f} | Va3={Va3:.2f}")
     print(f"Angles Abs.[deg]  : Alpha1={contraintes['alpha_1']:.2f}° | Alpha2={np.degrees(alpha2):.2f}° | Alpha3={contraintes['alpha_3']:.2f}°")
     print(f"Angles Rel.[deg]  : Alpha_rel1={np.degrees(alpha_rel1):.2f}° | Alpha_rel2={np.degrees(alpha_rel2):.2f}° | Alpha_rel3={np.degrees(alpha_rel3):.2f}°")
-    print(f"Coefficient de pertes : Rotor (Y_R) = {Y_R:.2f}, Stator (Y_N) = {Y_N:.2f}, Stator (Y_N_2) = {Y_N_2:.2f}  ")
+    print(f"Coefficient de pertes : Rotor (Y_R) = {Y_R:.2f}, Stator (Y_N) = {Y_N:.2f}")
 
 def plot_geometrie_turbine():
     # Extraction des données du dictionnaire
