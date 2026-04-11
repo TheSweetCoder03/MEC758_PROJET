@@ -35,7 +35,7 @@ def deg2rad(angle):
     return angle * np.pi / 180.0
 
 def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
-    print(f"\nÉTAPES 1.a, 1.b, 1.c : Géométrie et Triangles")
+    print(f"\nÉTAPES 1: Géométrie et Triangles")
     print(f"Stratégie de veine : {'Racine Constante' if racine_constante else 'Bout (Tip) Constant'}")
     
     # Constantes de Sutherland (Air/Gaz)
@@ -124,7 +124,6 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     r_root2 = 1.02 * r_root3
     r_tip2 = r_m2 * 2 - r_root2
  
-
     # CALCUL DES ANGLES (ABSOLUS ET RELATIFS)
 
     # Station 2
@@ -693,17 +692,15 @@ def etape_4(donnees_hpt):
 
     Ytot_r = Yp_moderne_r * f_re_r + Ys_moderne_r + Ytet_r + Ytc_r  
 
-    # =====================================================================
-    # 4.b : TROUVER LE JEU KR CORRESPONDANT AU RENDEMENT ISENTROPIQUE CIBLE
-    # =====================================================================
+    # =======================
+    # 4.b : TROUVER LE JEU KR 
+    # =======================
     
     # 1. Récupération des cibles et paramètres énergétiques
     eta_cible = donnees_hpt['eta_iso']
     dh0 = donnees_hpt['dh0_hpt'] # Travail réel (cp * Delta T0)
     
     # 2. Calcul de la somme des pertes (en lambda) requise pour le rendement cible
-    # Selon ta formule : rendement = 1 / (1 + (lambda_s * V2^2 + lambda_r * Vr3^2) / (2 * dh0))
-    # On isole la perte totale d'énergie (Somme_Pertes_E = lambda_s*V2^2 + lambda_r*Vr3^2)
     perte_energie_totale_cible = 2 * dh0 * (1 / eta_cible - 1)
     
     # 3. Calcul de la perte d'énergie réelle du stator (fixe car dépend de la géométrie)
@@ -718,14 +715,9 @@ def etape_4(donnees_hpt):
     Ytot_r_requis = lambda_r_requis * (1 + 0.5 * y * Mr3**2)
     
     # 6. Isolation du coefficient de perte dû au jeu (Ytc_r)
-    # Ytot_r = Yp_moderne_r * f_re_r + Ys_moderne_r + Ytet_r + Ytc_r
-    # On soustrait les pertes de profil, secondaires et annulaires du rotor
     Ytc_r_requis = Ytot_r_requis - (Yp_moderne_r * f_re_r + Ys_moderne_r + Ytet_r)
     
     # 7. Inversion de la formule de perte de jeu pour trouver k_r
-    # Formule AMDC : Ytc = 0.37 * (c/h) * (k2/c)^0.78 * Cl^2 * (cos^2_b3 / cos^3_bm)
-    # avec k2 = k_r / (nbre_seal^0.42)
-    
     terme_geometrique = 0.37 * (c_r / h_r) * (Cl_sc_r**2) * (np.cos(beta_3)**2 / (np.cos(beta_m_r)**3))
     
     if Ytc_r_requis <= 0:
@@ -734,13 +726,11 @@ def etape_4(donnees_hpt):
         # Inversion : (k2/c)^0.78 = Ytc / terme_geometrique
         k2_sur_c = (Ytc_r_requis / terme_geometrique)**(1 / 0.78)
         k2 = k2_sur_c * c_r
-        # k2 = k_r / nbre_seal^0.42  => k_r = k2 * nbre_seal^0.42
         k_r_final = k2 * (nbre_seal**0.42)
 
     print(f"\nÉTAPES 4: Coefficient de perte")
     print(f"Coefficient de pertes : Stator (Y_N) = {Ytot_s:.2f}, Rotor (Y_R) = {Ytot_r:.2f}")
     print(f"Jeu radial rotor requis pour eta={eta_cible:.3f} : {k_r_final*1000:.4f} mm")
-    print(f"Rapport de jeu (k_r / h_r) : {(k_r_final / h_r)*100:.2f} %")
     
     # Sauvegarde dans le dictionnaire
     donnees['k_r_final'] = k_r_final
