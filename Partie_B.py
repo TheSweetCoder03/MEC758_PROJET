@@ -29,6 +29,7 @@ contraintes = {
 }
 
 donnees = {}       # Pour stocker des variables
+resultats_radiaux = {}
 
 def deg2rad(angle):
     return angle * np.pi / 180.0
@@ -124,11 +125,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     r_tip2 = r_m2 * 2 - r_root2
  
 
-    # --- CALCUL DES ANGLES (ABSOLUS ET RELATIFS) ---
-    # Station 1
-    Vru1 = Vu1 - U1
-    alpha_rel1 = np.arctan(Vru1 / Va1)
-    Vr1 = np.sqrt(Va1**2 + Vru1**2)
+    # CALCUL DES ANGLES (ABSOLUS ET RELATIFS)
 
     # Station 2
     alpha2 = np.arctan(Vu2 / Va2)
@@ -160,10 +157,11 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     # --- Sauvegarde structurée ---
     donnees['P'] = {1: P1, 2: P2, 3: P3}
     donnees['M'] = {1: M1, 2: M2, 3: M3}
+    donnees['Mr'] = {2: Mr2, 3: Mr3}
     donnees['To'] = {1: T01, 2: T01, 3: T03}
     donnees['p'] = {1: rho1, 2: rho2, 3: rho3}
     donnees['alpha'] = {1: deg2rad(contraintes['alpha_1']), 2: alpha2, 3: deg2rad(contraintes['alpha_3'])}
-    donnees['alpha_relatif'] = {1: alpha_rel1, 2: alpha_rel2, 3: alpha_rel3}
+    donnees['alpha_relatif'] = { 2: alpha_rel2, 3: alpha_rel3}
 
     donnees['A'] = {1: A1, 2: A2, 3: A3}
     donnees['r_root'] = {1: r_root1, 2: r_root2, 3: r_root3}
@@ -176,7 +174,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     donnees['U'] = {1: U1, 2: U2, 3: U3}
     donnees['Va'] = {1: Va1, 2: Va2, 3: Va3}
     donnees['Vu'] = {1: Vu1, 2: Vu2, 3: Vu3}
-    donnees['Vr'] = {1: Vr1, 2: Vr2, 3: Vr3}
+    donnees['Vr'] = {2: Vr2, 3: Vr3}
 
     donnees['Y'] = {1: Y_R, 2: Y_N}
     donnees['nst'] = rendement
@@ -185,8 +183,8 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     print(f"Régime : {rpm:.0f} RPM")
     print(f"Vitesses Va [m/s] : Va1={Va1:.2f} | Va2={Va2:.2f} | Va3={Va3:.2f}")
     print(f"Angles Abs.[deg]  : Alpha1={contraintes['alpha_1']:.2f}° | Alpha2={np.degrees(alpha2):.2f}° | Alpha3={contraintes['alpha_3']:.2f}°")
-    print(f"Angles Rel.[deg]  : Alpha_rel1={np.degrees(alpha_rel1):.2f}° | Alpha_rel2={np.degrees(alpha_rel2):.2f}° | Alpha_rel3={np.degrees(alpha_rel3):.2f}°")
-    print(f"Coefficient de pertes : Rotor (Y_R) = {Y_R:.2f}, Stator (Y_N) = {Y_N:.2f}")
+    print(f"Angles Rel.[deg]  : Alpha_rel1=Alpha1° | Alpha_rel2={np.degrees(alpha_rel2):.2f}° | Alpha_rel3={np.degrees(alpha_rel3):.2f}°")
+    print(f"Coefficient de pertes : Stator (Y_N) = {Y_N:.2f}, Rotor (Y_R) = {Y_R:.2f}")
     print(f"Rendement de l'étage: {rendement:.2f}")
 
 def plot_geometrie_turbine():
@@ -340,10 +338,9 @@ def tracer_triangles_vitesses():
     plt.show()
 
 def etape_2(donnees_hpt):
-    
     print(f"\nÉTAPES 2.a, b, c : Répartition des triangles de vitesse")
 
-    #Valeurs calculées précédemment
+    # Valeurs lues depuis les dictionnaires globaux 'donnees' et 'contraintes'
     Vu_1 = donnees['Vu'][1]
     Vu_2 = donnees['Vu'][2]
     Vu_3 = donnees['Vu'][3]
@@ -365,35 +362,36 @@ def etape_2(donnees_hpt):
     rt_1 = donnees['r_tip'][1]
     rt_2 = donnees['r_tip'][2]
     rt_3 = donnees['r_tip'][3]
-    f_t_m = contraintes['reaction'] # facteur de travail moyen
+    f_t_m = contraintes['reaction']
     Va_1 = donnees['Va'][1]
     Va_2 = donnees['Va'][2]
     Va_3 = donnees['Va'][3]
     To_1 = donnees['To'][1]
     To_2 = donnees['To'][2]
     To_3 = donnees['To'][3]
+    
     cp = donnees_hpt['cp']
     gamma = donnees_hpt['gamma']
-    R_gaz = donnees_hpt['cp'] * (gamma - 1) / gamma
+    R_gaz = cp * (gamma - 1) / gamma
 
-    # Initialisation variable M_hub
+    # Initialisation
     donnees['M_hub'] = {}
 
-    #Hypothèse de Free Vortex
+    # Hypothèse de Free Vortex
     n = -1
 
-    #Trouver les constantes à chaque station
+    # Trouver les constantes à chaque station
     stat_1 = [Vu_1, rm_1, Pm_1, alpham_1, pm_1, rr_1, rt_1, Va_1, To_1]
     stat_2 = [Vu_2, rm_2, Pm_2, alpham_2, pm_2, rr_2, rt_2, Va_2, To_2]
     stat_3 = [Vu_3, rm_3, Pm_3, alpham_3, pm_3, rr_3, rt_3, Va_3, To_3]
     
-    for i in [stat_1, stat_2, stat_3] :
+    for i in [stat_1, stat_2, stat_3]:
         k1 = i[0] * i[1]
         k2 = (i[1]**2) * (1 - f_t_m)
         k3 = np.tan(i[3]) * i[1]
-        i.extend([k1,k2,k3])
+        i.extend([k1, k2, k3])
 
-    #Calculer variables le long du rayon
+    # Calculer variables le long du rayon
     for idx, j in enumerate([stat_1, stat_2, stat_3], start=1):
         r = np.linspace(j[5], j[6], 100)
         f_t = 1 - j[10] / r**2
@@ -404,16 +402,35 @@ def etape_2(donnees_hpt):
         alpha = np.degrees(np.arctan(j[11] / r))
         a = np.sqrt(gamma * R_gaz * T)
         M = V / a
+        
         donnees['M_hub'][idx] = M[0]
 
-        #Faire graphiques
+        # Sauvegarde pour les graphiques
+        resultats_radiaux[idx] = {
+            'r': r,
+            'f_t': f_t,
+            'Vu': Vu,
+            'P': P,
+            'alpha': alpha,
+            'T': T
+        }
 
-        fig, axes = plt.subplots(2,3, figsize=(10,8))
+def etape_2_graphique():
+    for idx, res in resultats_radiaux.items():
+        r = res['r']
+        f_t = res['f_t']
+        Vu = res['Vu']
+        P = res['P']
+        alpha = res['alpha']
+        T = res['T']
+
+        fig, axes = plt.subplots(2, 3, figsize=(10, 8))
+        fig.suptitle(f"Station {idx}", fontsize=14, fontweight='bold')
 
         axes[0, 0].plot(f_t, r)
         axes[0, 0].set_ylabel("r (m)")
         axes[0, 0].set_xlabel("Λ")
-        axes[0, 0].set_title("Λ  vs r")
+        axes[0, 0].set_title("Λ vs r")
         axes[0, 0].tick_params(axis='x', rotation=90)
 
         axes[0, 1].plot(Vu, r)
@@ -421,6 +438,9 @@ def etape_2(donnees_hpt):
         axes[0, 1].set_xlabel("Vu")
         axes[0, 1].set_title("Vu vs r")
         axes[0, 1].tick_params(axis='x', rotation=90)
+        
+        # Désactiver le graphique vide
+        axes[0, 2].axis('off')
 
         axes[1, 0].plot(P, r)
         axes[1, 0].set_ylabel("r (m)")
@@ -444,8 +464,6 @@ def etape_2(donnees_hpt):
         plt.show()
 
 def etape_3(donnees_hpt):
-    
-    print(f"\nÉTAPES 3: Paramètres des aubes")
    
     fs = contraintes['stator_h_c']
     fr = contraintes['rotor_h_c']
@@ -489,13 +507,14 @@ def etape_3(donnees_hpt):
     donnees['ca'] = {'stator': cas, 'rotor': car}
     donnees['pas'] = {'stator': pas_s, 'rotor': pas_r}
     
+    print(f"\nÉTAPES 3: Paramètres des aubes")
     print(f"Stator | Corde axiale: {cas:.4f} m | Pas: {pas_s:.4f} m | Aubes: {ns:.1f} -> {int(np.ceil(ns))} aubes")
     print(f"Rotor  | Corde axiale: {car:.4f} m | Pas: {pas_r:.4f} m | Aubes: {nr:.1f} -> {int(np.ceil(nr))} aubes")
 
 def etape_4(donnees_hpt):
     
     # Extraction des variables du dictionnaire 'donnees'
-    beta_1 = donnees['alpha_relatif'][1] 
+    beta_1 = donnees['alpha'][1] 
     beta_2 = donnees['alpha_relatif'][2]
     beta_3 = donnees['alpha_relatif'][3]
 
@@ -510,6 +529,9 @@ def etape_4(donnees_hpt):
     M1 = donnees['M'][1]
     M2 = donnees['M'][2]
     M3 = donnees['M'][3]
+
+    Mr2 = donnees['Mr'][2]
+    Mr3 = donnees['Mr'][3]
 
     V2 = np.sqrt((donnees['Va'][2])**2 + (donnees['Vu'][2])**2)
     Vr3 = donnees['Vr'][3]
@@ -559,9 +581,9 @@ def etape_4(donnees_hpt):
     d_tet_0 = Tableau.extraire_donnee_graphique(x=0.12, y=None, figure=140)
     d_tet_alpha = Tableau.extraire_donnee_graphique(x=0.12, y=None, figure=141)
 
-    # ==========================================
-    # --- PERTE DANS LE STATOR (Station 1 à 2) ---
-    # ==========================================
+    # ====================================
+    # PERTE DANS LE STATOR (Station 1 à 2)
+    # ====================================
     
     # Extractions graphiques pour le stator
     Yp_1_s = Tableau.extraire_donnee_graphique(x=(pas_s/c_s), y=np.degrees(alpha_2), figure=1)
@@ -583,7 +605,7 @@ def etape_4(donnees_hpt):
     # Perte due aux écoulements secondaires (Ys)
     f_ar_s = (1 - 0.25 * np.sqrt(2 - (h_s / c_s))) / (h_s / c_s) if (h_s / c_s) <= 2 else 1 / (h_s / c_s)
 
-    alpha_m_s = np.arctan((1 / 2) * (np.tan(alpha_1) + np.tan(alpha_2)))
+    alpha_m_s = np.arctan((1 / 2) * (np.tan(alpha_1) - np.tan(alpha_2)))
     Cl_sc_s = 2 * (np.tan(abs(alpha_1)) + np.tan(abs(alpha_2))) * np.cos(alpha_m_s)
 
     Ys_AMDC_s = 0.0334 * f_ar_s * (np.cos(alpha_2) / np.cos(beta_1)) * Cl_sc_s**2 * (np.cos(alpha_2))**2 / (np.cos(alpha_m_s))**3
@@ -594,8 +616,9 @@ def etape_4(donnees_hpt):
     Ys_moderne_s = 1.2 * Ys_AMDC_s * ks_s
 
     # Perte annulaire (Ytet)
-    d_tet_s = d_tet_0 + abs(beta_1 / alpha_2) * (beta_1 / alpha_1) * (d_tet_alpha - d_tet_0) # Attention: ton original avait (beta_1/alpha_1). J'ai mis alpha_1/alpha_1 ce qui fait 1.
-    Ytet_s = ((1 - (y - 1) / 2 * M2 * (1 / (1 - d_tet_s) - 1))**(-y / (y - 1)) - 1) / (1 + ((y - 1) / 2) * M2**2)**(-y / (y - 1))
+    d_tet_s = d_tet_0 + abs(beta_1 / alpha_2) * (beta_1 / alpha_2) * (d_tet_alpha - d_tet_0) 
+    denom_s = 1 - (1 + (y - 1) / 2 * M2**2)**(-y / (y - 1))
+    Ytet_s = ((1 - (y - 1) / 2 * M2**2 * (1 / (1 - d_tet_s) - 1))**(-y / (y - 1)) - 1) / denom_s
 
     # Perte due au jeu radial (Ytc)
     k_2_s = k_s / (nbre_seal)**0.42
@@ -612,9 +635,9 @@ def etape_4(donnees_hpt):
     Ytot_s = Yp_moderne_s * f_re_s + Ys_moderne_s + Ytet_s + Ytc_s
 
 
-    # ==========================================
-    # --- PERTE DANS LE ROTOR (Station 2 à 3) ---
-    # ==========================================
+    # ===================================
+    # PERTE DANS LE ROTOR (Station 2 à 3)
+    # ===================================
     
     # Extractions graphiques pour le rotor
     Yp_1_r = Tableau.extraire_donnee_graphique(x=(pas_r/c_r), y=np.degrees(beta_3), figure=1)
@@ -623,8 +646,8 @@ def etape_4(donnees_hpt):
     # Perte du profil (Yp)
     Yp_AMDC_r = (Yp_1_r + abs(beta_2 / beta_3) * (beta_2 / beta_3) * (Yp_2_r - Yp_1_r)) * ((tmax_r / c_r) / 0.2)**(beta_2 / beta_3)
 
-    k1_r = 1 - 1.25 * abs(M3 - 0.2) if M3 > 0.2 else 1
-    k2_r = abs(M2 / M3)**2
+    k1_r = 1 - 1.25 * abs(Mr3 - 0.2) if Mr3 > 0.2 else 1
+    k2_r = abs(Mr2 / Mr3)**2
     kp_r = 1 - k2_r * (1 - k1_r)
 
     dP_hub_r = 0
@@ -633,7 +656,7 @@ def etape_4(donnees_hpt):
 
     dp_shock_r = (rrm_r / rtm_r) * dP_hub_r
 
-    Yshock_r = dp_shock_r * (P2 / P3) * ((1 - (1 + (y - 1) / 2 * M2**2 )**(y / (y - 1))) / (1 - (1 + (y - 1) / 2 * M3**2 )**(y / (y - 1))))
+    Yshock_r = dp_shock_r * (P2 / P3) * ((1 - (1 + (y - 1) / 2 * Mr2**2 )**(y / (y - 1))) / (1 - (1 + (y - 1) / 2 * Mr3**2 )**(y / (y - 1))))
 
     Yp_moderne_r = 0.914 * ((2 / 3) * Yp_AMDC_r * kp_r + Yshock_r)
 
@@ -641,7 +664,7 @@ def etape_4(donnees_hpt):
     # Perte secondaire (Ys) 
     f_ar_r = (1 - 0.25 * np.sqrt(2 - (h_r / c_r))) / (h_r / c_r) if (h_r / c_r) <= 2 else 1 / (h_r / c_r)
 
-    beta_m_r = np.arctan((1 / 2) * (np.tan(beta_2) + np.tan(beta_3)))
+    beta_m_r = np.arctan((1 / 2) * (np.tan(beta_2) - np.tan(beta_3)))
     Cl_sc_r = 2 * (np.tan(abs(beta_2)) + np.tan(abs(beta_3))) * np.cos(beta_m_r)
 
     Ys_AMDC_r = 0.0334 * f_ar_r * (np.cos(beta_3) / np.cos(beta_2)) * Cl_sc_r**2 * (np.cos(beta_3))**2 / (np.cos(beta_m_r))**3
@@ -652,8 +675,9 @@ def etape_4(donnees_hpt):
     Ys_moderne_r = 1.2 * Ys_AMDC_r * ks_r
 
     # Perte annulaire (Ytet)
-    d_tet_r = d_tet_0 + abs(beta_2 / beta_3) * (beta_2 / beta_2) * (d_tet_alpha - d_tet_0)
-    Ytet_r = ((1 - (y - 1) / 2 * M3 * (1 / (1 - d_tet_r) - 1))**(-y / (y - 1)) - 1) / (1 + ((y - 1) / 2) * M3**2)**(-y / (y - 1))
+    d_tet_r = d_tet_0 + abs(beta_2 / beta_3) * (beta_2 / beta_3) * (d_tet_alpha - d_tet_0)
+    denom_r = 1 - (1 + (y - 1) / 2 * Mr3**2)**(-y / (y - 1))
+    Ytet_r = ((1 - (y - 1) / 2 * Mr3**2 * (1 / (1 - d_tet_r) - 1))**(-y / (y - 1)) - 1) / denom_r
 
     # Perte due au jeu radial (Ytc)
     k_2_r = k_r / (nbre_seal)**0.42
@@ -668,7 +692,55 @@ def etape_4(donnees_hpt):
         f_re_r = (Re_r / 1000000)**-0.2
 
     Ytot_r = Yp_moderne_r * f_re_r + Ys_moderne_r + Ytet_r + Ytc_r  
+
+    # =====================================================================
+    # 4.b : TROUVER LE JEU KR CORRESPONDANT AU RENDEMENT ISENTROPIQUE CIBLE
+    # =====================================================================
     
-    print(f"Coefficient de perte stator : {Ytot_s:.4f}")
-    print(f"Coefficient de perte rotor : {Ytot_r:.4f}")
+    # 1. Récupération des cibles et paramètres énergétiques
+    eta_cible = donnees_hpt['eta_iso']
+    dh0 = donnees_hpt['dh0_hpt'] # Travail réel (cp * Delta T0)
     
+    # 2. Calcul de la somme des pertes (en lambda) requise pour le rendement cible
+    # Selon ta formule : rendement = 1 / (1 + (lambda_s * V2^2 + lambda_r * Vr3^2) / (2 * dh0))
+    # On isole la perte totale d'énergie (Somme_Pertes_E = lambda_s*V2^2 + lambda_r*Vr3^2)
+    perte_energie_totale_cible = 2 * dh0 * (1 / eta_cible - 1)
+    
+    # 3. Calcul de la perte d'énergie réelle du stator (fixe car dépend de la géométrie)
+    lambda_s_reel = Ytot_s / (1 + 0.5 * y * M2**2)
+    perte_energie_stator = lambda_s_reel * V2**2
+    
+    # 4. Déduction de la perte d'énergie que le rotor "doit" avoir
+    perte_energie_rotor_requise = perte_energie_totale_cible - perte_energie_stator
+    
+    # 5. Conversion en coefficient de perte de pression Y pour le rotor
+    lambda_r_requis = perte_energie_rotor_requise / Vr3**2
+    Ytot_r_requis = lambda_r_requis * (1 + 0.5 * y * Mr3**2)
+    
+    # 6. Isolation du coefficient de perte dû au jeu (Ytc_r)
+    # Ytot_r = Yp_moderne_r * f_re_r + Ys_moderne_r + Ytet_r + Ytc_r
+    # On soustrait les pertes de profil, secondaires et annulaires du rotor
+    Ytc_r_requis = Ytot_r_requis - (Yp_moderne_r * f_re_r + Ys_moderne_r + Ytet_r)
+    
+    # 7. Inversion de la formule de perte de jeu pour trouver k_r
+    # Formule AMDC : Ytc = 0.37 * (c/h) * (k2/c)^0.78 * Cl^2 * (cos^2_b3 / cos^3_bm)
+    # avec k2 = k_r / (nbre_seal^0.42)
+    
+    terme_geometrique = 0.37 * (c_r / h_r) * (Cl_sc_r**2) * (np.cos(beta_3)**2 / (np.cos(beta_m_r)**3))
+    
+    if Ytc_r_requis <= 0:
+        k_r_final = 0.0
+    else:
+        # Inversion : (k2/c)^0.78 = Ytc / terme_geometrique
+        k2_sur_c = (Ytc_r_requis / terme_geometrique)**(1 / 0.78)
+        k2 = k2_sur_c * c_r
+        # k2 = k_r / nbre_seal^0.42  => k_r = k2 * nbre_seal^0.42
+        k_r_final = k2 * (nbre_seal**0.42)
+
+    print(f"\nÉTAPES 4: Coefficient de perte")
+    print(f"Coefficient de pertes : Stator (Y_N) = {Ytot_s:.2f}, Rotor (Y_R) = {Ytot_r:.2f}")
+    print(f"Jeu radial rotor requis pour eta={eta_cible:.3f} : {k_r_final*1000:.4f} mm")
+    print(f"Rapport de jeu (k_r / h_r) : {(k_r_final / h_r)*100:.2f} %")
+    
+    # Sauvegarde dans le dictionnaire
+    donnees['k_r_final'] = k_r_final
