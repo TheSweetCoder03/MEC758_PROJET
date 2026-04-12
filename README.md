@@ -1,6 +1,6 @@
 # MEC758 - Projet de Conception : Turboshaft à Trois Arbres
 
-Ce projet, réalisé dans le cadre du cours MEC758 - Systèmes de propulsion et turbomachines à l'École de technologie supérieure, porte sur la conception aérodynamique d'un moteur turboshaft pour un hélicoptère en vol stationnaire.
+Ce projet, réalisé dans le cadre du cours MEC758 - Systèmes de propulsion et turbomachines, porte sur la conception aérodynamique d'un moteur turboshaft pour un hélicoptère en vol stationnaire.
 
 
 
