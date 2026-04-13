@@ -34,7 +34,7 @@ resultats_radiaux = {}
 def deg2rad(angle):
     return angle * np.pi / 180.0
 
-def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
+def etape_1(donnees_hpt, racine_constante, tolerance=1e-6, r_root3_fixe=None):
     print(f"\nÉTAPES 1: Géométrie et Triangles")
     print(f"Stratégie de veine : {'Racine Constante' if racine_constante else 'Bout (Tip) Constant'}")
     
@@ -70,7 +70,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     Vu3 = V3 * np.sin(deg2rad(contraintes['alpha_3']))
 
     A3 = m_dot / (rho3 * Va3)
-    r_root3 = U_root_cible / omega
+    r_root3 = r_root3_fixe if r_root3_fixe is not None else U_root_cible / omega
     r_tip3 = np.sqrt((A3 / np.pi) + r_root3**2)
     r_m3 = (r_root3 + r_tip3) / 2.0
     U3 = omega * r_m3
