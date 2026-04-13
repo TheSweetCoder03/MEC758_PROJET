@@ -175,7 +175,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     donnees['Vu'] = {1: Vu1, 2: Vu2, 3: Vu3}
     donnees['Vr'] = {2: Vr2, 3: Vr3}
 
-    donnees['Y'] = {1: Y_R, 2: Y_N}
+    donnees['Y'] = {1: Y_N, 2: Y_R}
     donnees['nst'] = rendement
     donnees['Visc'] = {'stator': Visc_s, 'rotor': Visc_r}
 
@@ -183,7 +183,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     print(f"Vitesses Va [m/s] : Va1={Va1:.2f} | Va2={Va2:.2f} | Va3={Va3:.2f}")
     print(f"Angles Abs.[deg]  : Alpha1={contraintes['alpha_1']:.2f}° | Alpha2={np.degrees(alpha2):.2f}° | Alpha3={contraintes['alpha_3']:.2f}°")
     print(f"Angles Rel.[deg]  : Alpha_rel1=Alpha1° | Alpha_rel2={np.degrees(alpha_rel2):.2f}° | Alpha_rel3={np.degrees(alpha_rel3):.2f}°")
-    print(f"Coefficient de pertes : Stator (Y_N) = {Y_N:.2f}, Rotor (Y_R) = {Y_R:.2f}")
+    print(f"Coefficient de pertes : Stator (Y_N) = {Y_N:.4f}, Rotor (Y_R) = {Y_R:.4f}")
     print(f"Rendement de l'étage: {rendement:.2f}")
 
 def plot_geometrie_turbine():
@@ -571,7 +571,7 @@ def etape_4(donnees_hpt):
     tmax_s = 0.15 * c_s    # Épaisseur max ailette stator
     tmax_r = 0.15 * c_r    # Épaisseur max ailette rotor
     k_s = 0                # Jeu radial ailette stator
-    k_r = 0.0005           # Jeu radial ailette rotor
+    k_r = 0.0004         # Jeu radial ailette rotor
 
     # Extraction des variables du dictionnaire 'donnees_hpt'
     y = donnees_hpt['gamma']
@@ -696,41 +696,24 @@ def etape_4(donnees_hpt):
     # 4.b : TROUVER LE JEU KR 
     # =======================
     
-    # 1. Récupération des cibles et paramètres énergétiques
-    eta_cible = donnees_hpt['eta_iso']
-    dh0 = donnees_hpt['dh0_hpt'] # Travail réel (cp * Delta T0)
+    Ytot_R2 = 0.44
+    Ytc_requis = Ytot_R2 - (Yp_moderne_r * f_re_r) - Ys_moderne_r - Ytet_r
     
-    # 2. Calcul de la somme des pertes (en lambda) requise pour le rendement cible
-    perte_energie_totale_cible = 2 * dh0 * (1 / eta_cible - 1)
+    if Ytc_requis <= 0:
+        k_requis = 0
+        Jeu_requis = 0
+        print(f"\nATTENTION : Budget de perte insuffisant ! (Ytc_requis = {Ytc_requis:.4f})")
+        print(f"Les pertes de profil et secondaires sont déjà supérieures au total visé.")
     
-    # 3. Calcul de la perte d'énergie réelle du stator (fixe car dépend de la géométrie)
-    lambda_s_reel = Ytot_s / (1 + 0.5 * y * M2**2)
-    perte_energie_stator = lambda_s_reel * V2**2
-    
-    # 4. Déduction de la perte d'énergie que le rotor "doit" avoir
-    perte_energie_rotor_requise = perte_energie_totale_cible - perte_energie_stator
-    
-    # 5. Conversion en coefficient de perte de pression Y pour le rotor
-    lambda_r_requis = perte_energie_rotor_requise / Vr3**2
-    Ytot_r_requis = lambda_r_requis * (1 + 0.5 * y * Mr3**2)
-    
-    # 6. Isolation du coefficient de perte dû au jeu (Ytc_r)
-    Ytc_r_requis = Ytot_r_requis - (Yp_moderne_r * f_re_r + Ys_moderne_r + Ytet_r)
-    
-    # 7. Inversion de la formule de perte de jeu pour trouver k_r
-    terme_geometrique = 0.37 * (c_r / h_r) * (Cl_sc_r**2) * (np.cos(beta_3)**2 / (np.cos(beta_m_r)**3))
-    
-    if Ytc_r_requis <= 0:
-        k_r_final = 0.0
     else:
-        # Inversion : (k2/c)^0.78 = Ytc / terme_geometrique
-        k2_sur_c = (Ytc_r_requis / terme_geometrique)**(1 / 0.78)
-        k2 = k2_sur_c * c_r
-        k_r_final = k2 * (nbre_seal**0.42)
+        denominateur = (0.37 * (c_r / h_r) * (Cl_sc_r**2) * (np.cos(beta_3)**2 / np.cos(beta_m_r)**3))
+        k_requis = c_r * (Ytc_requis / denominateur)**(1 / 0.78)
+        Jeu_requis = k_requis * (nbre_seal)**(0.42)
+        
+    k_requis = c_r * (Ytc_requis / denominateur)**(1 / 0.78)
+    Jeu_requis = k_requis * (nbre_seal)**(0.42)
 
     print(f"\nÉTAPES 4: Coefficient de perte")
-    print(f"Coefficient de pertes : Stator (Y_N) = {Ytot_s:.2f}, Rotor (Y_R) = {Ytot_r:.2f}")
-    print(f"Jeu radial rotor requis pour eta={eta_cible:.3f} : {k_r_final*1000:.4f} mm")
+    print(f"Coefficient de pertes : Stator (Y_N) = {Ytot_s:.4f}, Rotor (Y_R) = {Ytot_r:.4f}")
+    print(f"Jeu radial rotor requis : {Jeu_requis * 1000:.4f} mm")
     
-    # Sauvegarde dans le dictionnaire
-    donnees['k_r_final'] = k_r_final
