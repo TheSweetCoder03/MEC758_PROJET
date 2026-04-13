@@ -21,6 +21,7 @@ def main():
 
     print("\nEXÉCUTION DE LA PARTIE C : OFF-DESIGN")
     Partie_C.partie_c()
+    Partie_C.tracer_triangles_vitesses()
 
 if __name__ == "__main__":
     main()
