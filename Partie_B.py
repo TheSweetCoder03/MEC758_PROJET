@@ -157,6 +157,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     donnees['P'] = {1: P1, 2: P2, 3: P3}
     donnees['M'] = {1: M1, 2: M2, 3: M3}
     donnees['Mr'] = {2: Mr2, 3: Mr3}
+    donnees['T'] = {1: T1, 2: T2, 3: T3}
     donnees['To'] = {1: T01, 2: T01, 3: T03}
     donnees['p'] = {1: rho1, 2: rho2, 3: rho3}
     donnees['alpha'] = {1: deg2rad(contraintes['alpha_1']), 2: alpha2, 3: deg2rad(contraintes['alpha_3'])}
@@ -511,7 +512,7 @@ def etape_3(donnees_hpt):
     print(f"Rotor  | Corde axiale: {car:.4f} m | Pas: {pas_r:.4f} m | Aubes: {nr:.1f} -> {int(np.ceil(nr))} aubes")
 
 def etape_4(donnees_hpt):
-    
+    print(f"\nÉTAPES 4: Coefficient de perte")
     # Extraction des variables du dictionnaire 'donnees'
     beta_1 = donnees['alpha'][1] 
     beta_2 = donnees['alpha_relatif'][2]
@@ -692,11 +693,13 @@ def etape_4(donnees_hpt):
 
     Ytot_r = Yp_moderne_r * f_re_r + Ys_moderne_r + Ytet_r + Ytc_r  
 
-    # =======================
-    # 4.b : TROUVER LE JEU KR 
-    # =======================
+    print(f"Coefficient de pertes : Stator (Y_N) = {Ytot_s:.4f}, Rotor (Y_R) = {Ytot_r:.4f}")
+
+    # ==========================
+    # 4.b : Trouver le jeu rotor 
+    # ==========================
     
-    Ytot_R2 = 0.44
+    Ytot_R2 = donnees['Y'][2]
     Ytc_requis = Ytot_R2 - (Yp_moderne_r * f_re_r) - Ys_moderne_r - Ytet_r
     
     if Ytc_requis <= 0:
@@ -713,7 +716,37 @@ def etape_4(donnees_hpt):
     k_requis = c_r * (Ytc_requis / denominateur)**(1 / 0.78)
     Jeu_requis = k_requis * (nbre_seal)**(0.42)
 
-    print(f"\nÉTAPES 4: Coefficient de perte")
-    print(f"Coefficient de pertes : Stator (Y_N) = {Ytot_s:.4f}, Rotor (Y_R) = {Ytot_r:.4f}")
     print(f"Jeu radial rotor requis : {Jeu_requis * 1000:.4f} mm")
+
+    # ===================================================
+    # 4.c : Proportion aube AH/AT pour durée de vie rotor
+    # ===================================================
+
+    rho_m = 0.315
+    k1 = 15
+    k2 = 55.6
+    k3 = -5.2
+    k4 = 0.6
+    gamma = donnees_hpt['gamma']
+    t = contraintes['vie_heures']
+    T_M = (donnees['T'][2] * (1 + ((gamma - 1) / 2) * (M2_hub**2))) * 1.8
+    an_2 = (donnees['A'][2] * 1550) * donnees['Rpm']**2
+    LM_M = ((k1 + np.log10(t)) / 10**3) * (T_M + 175)
     
+    if LM_M <= 44.33:
+        print('Température trop basse, vie ailette infinie')
+    else:
+        # 2. Calcul de la contrainte admissible sigma_c (KSI) 
+        sigma_c = fsolve(lambda s: k2 + k3 * np.log(s) + k4 * (np.log(s))**2 - LM_M, x0=0.00001)[0] 
+
+        # 3. Calcul du coefficient géométrique K5 nécessaire 
+        k5_req = sigma_c / (rho_m * (an_2 * 10**-10)**1.08)
+
+        # 4. Identification du ratio Ar/At 
+        k5_values = np.array([12.60, 11.86, 11.03, 10.68, 9.93, 9.62, 9.40])
+        ratio_values = np.array([4, 5, 6, 7, 8, 9, 10])
+        Ar_At = np.interp(k5_req, k5_values[::-1], ratio_values[::-1])
+
+        print(f"Contrainte admissible : {sigma_c:.2f} KSI")
+        print(f"Coefficient K5 requis : {k5_req:.2f}")
+        print(f"Ratio Ar/At nécessaire : {Ar_At:.2f}")
