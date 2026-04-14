@@ -178,4 +178,6 @@ def pertes_incidence():
     Ys = Ys_des * ratio_perte_sec
 
     print(f"Les pertes de profil d'incidence sont de : {Yp:.2f}")
+    print(f"Le delta_phi pour profil est de : {d_phi:.2f}")
     print(f"Les pertes secondaires d'incidence sont de : {Ys:.2f}")
+    print(f"Le ratio de perte pour secondaire est de : {ratio_perte_sec:.2f}")
