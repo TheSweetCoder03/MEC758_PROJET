@@ -133,3 +133,46 @@ def tracer_triangles_vitesses():
 
     plt.tight_layout()
     plt.show()
+
+def pertes_incidence():
+
+    # -----------------
+    # Données
+    # -----------------
+    alpha_1 = Partie_B.donnees['alpha_relatif'][2]
+    alpha_1_deg = np.degrees(alpha_1) 
+    alpha_1_des = donnees_hc['alpha_relatif'][2]
+    alpha_1_des_deg = np.degrees(alpha_1_des)
+    incidence_deg = donnees_hc['incidence']
+    d_c = 0.032 # Ratio - Leading eadge Diameter / Chord
+    s_c = 0.56 # Ratio - Pitch / Chord
+    beta_1 = Partie_B.donnees['alpha'][1] 
+    beta_2 = Partie_B.donnees['alpha_relatif'][2]
+    Yp_des = Partie_B.donnes['coefficient_perte'][1] # Coefficient de pertes de profil de AMDC
+    Ys_des = Partie_B.donnes['coefficient_perte'][2] # Coefficient de pertes secondaire de AMDC
+
+    # ---------------------------------
+    # Calcul pour les pertes de profil
+    # ----------------------------------
+    d_s = d_c / s_c # Ratio - Leading edge diameter / Pitch
+    ratio_cos_beta = np.cos(beta_1) / np.cos(beta_2) # Calcul du ratio pour simplifier les formules suivantes
+    x_p = (d_s**-1.6)*(ratio_cos_beta**-2)*(alpha_1_deg - alpha_1_des_deg)
+
+    if x_p > 0 :
+        d_phi = 0.778 * (10**-5) * x_p + 0.56 * (10**-7) * (x_p**2) + 0.4 * (10**-10) * (x_p**3) + 2.054 * (10**-19) * (x_p**6)
+    else :
+        d_phi = -5.1734 * (10**-6) * x_p + 7.6902 * (10**-9) * (x_p**2 )
+    
+    Yp = Yp_des + d_phi
+
+    # ---------------------------------
+    # Calcul pour les pertes secondaires
+    # ----------------------------------
+    x_et = (incidence_deg / (180 - (beta_1 + beta_2))) * (ratio_cos_beta**-1.5) * (d_c**-0.3)
+
+    if x_et > 0: 
+        ratio_perte_sec = np.exp(0.9 * x_et) + 13 * (x_et**2) + 400 * (x_et**4)
+    else:
+        ratio_perte_sec = np.exp(0.9 * x_et)
+
+    Ys = Ys_des * ratio_perte_sec
