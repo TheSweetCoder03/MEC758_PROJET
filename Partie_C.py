@@ -148,8 +148,8 @@ def pertes_incidence():
     s_c = 0.56 # Ratio - Pitch / Chord
     beta_1 = Partie_B.donnees['alpha'][1] 
     beta_2 = Partie_B.donnees['alpha_relatif'][2]
-    Yp_des = Partie_B.donnes['coefficient_perte'][1] # Coefficient de pertes de profil de AMDC
-    Ys_des = Partie_B.donnes['coefficient_perte'][2] # Coefficient de pertes secondaire de AMDC
+    Yp_des = Partie_B.donnees['coefficient_perte'][1] # Coefficient de pertes de profil de AMDC
+    Ys_des = Partie_B.donnees['coefficient_perte'][2] # Coefficient de pertes secondaire de AMDC
 
     # ---------------------------------
     # Calcul pour les pertes de profil
@@ -176,3 +176,6 @@ def pertes_incidence():
         ratio_perte_sec = np.exp(0.9 * x_et)
 
     Ys = Ys_des * ratio_perte_sec
+
+    print(f"Les pertes de profil d'incidence sont de : {Yp:.2f}")
+    print(f"Les pertes secondaires d'incidence sont de : {Ys:.2f}")

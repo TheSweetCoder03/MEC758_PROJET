@@ -713,6 +713,8 @@ def etape_4(donnees_hpt):
     k_requis = c_r * (Ytc_requis / denominateur)**(1 / 0.78)
     Jeu_requis = k_requis * (nbre_seal)**(0.42)
 
+    donnees['coefficient_perte'] = {1: Yp_moderne_r, 2: Ys_moderne_r}
+
     print(f"\nÉTAPES 4: Coefficient de perte")
     print(f"Coefficient de pertes : Stator (Y_N) = {Ytot_s:.4f}, Rotor (Y_R) = {Ytot_r:.4f}")
     print(f"Jeu radial rotor requis : {Jeu_requis * 1000:.4f} mm")
