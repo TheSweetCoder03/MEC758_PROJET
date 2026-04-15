@@ -93,7 +93,6 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
         r_tip1 = r_tip3
         r_root1 = np.sqrt(r_tip1**2 - (A1 / np.pi))  
     r_m1 = (r_root1 + r_tip1) / 2.0
-    U1 = omega * r_m1
 
     # Calcul des pertes totales
     eta_hpt = donnees_hpt['eta_iso']
@@ -170,7 +169,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
 
     donnees['Rpm'] = rpm
     donnees['omega'] = omega
-    donnees['U'] = {1: U1, 2: U2, 3: U3}
+    donnees['U'] = {2: U2, 3: U3}
     donnees['Va'] = {1: Va1, 2: Va2, 3: Va3}
     donnees['Vu'] = {1: Vu1, 2: Vu2, 3: Vu3}
     donnees['Vr'] = {2: Vr2, 3: Vr3}
