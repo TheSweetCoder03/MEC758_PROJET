@@ -100,7 +100,6 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     dh0_is = dh0 / eta_hpt
     perte_totale = dh0_is - dh0
     perte_stator = (1 - contraintes['reaction']) * perte_totale
-    perte_rotor = contraintes['reaction'] * perte_totale
 
     # Thermodynamique de la station 2 (fixée par la réaction)
     T2 = T3 + (contraintes['reaction'] * dh0) / cp
