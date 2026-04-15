@@ -104,7 +104,7 @@ def Station_2 (po1, to1, s1):
     deltaT0max = (Um * (Vru1 - Vru2)) / cp
     n_etages = int((to2 - to1) / deltaT0max) + 1
 
-    station[2] = {"Po": po2, "To": to2, "w": wlpc, "s": s2}
+    station[2] = {"Po": po2, "To": to2, "w": wlpc, "s": s2, "Nb_etage": n_etages}
 
     return po2, to2, wlpc, s2
 
@@ -149,7 +149,7 @@ def Station_3 (po2, to2, s2):
     deltaT0max = (Um * (Vru1 - Vru2)) / cp
     n_etages = int((to3 - to1hpc) / deltaT0max) + 1
 
-    station[3] = {"Po": po3, "To": to3, "w": whpc, "s": s3}
+    station[3] = {"Po": po3, "To": to3, "w": whpc, "s": s3, "Nb_etage": n_etages}
 
     return po3, to3, whpc, s3
 
@@ -269,6 +269,8 @@ def print_station():
                 print(f"{i:<10} | {station[i]['Po']:<10.2f} | {station[i]['To']:<10.2f} | {'N/A':<10}")
     print(f"\nSFC: {station[7]['sfc']:.6f} kg/kW.h")
     print(f"Puissance de la turbine de puissance: {station[7]['hp']:.2f} HP")
+    print(f"Le nombre d'étages LPC : {station[2]['Nb_etage']:.2f} étages")
+    print(f"Le nombre d'étages HPC : {station[2]['Nb_etage']:.2f} étages")
 
 def plot_cycle():
 

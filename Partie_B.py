@@ -93,31 +93,80 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
         r_tip1 = r_tip3
         r_root1 = np.sqrt(r_tip1**2 - (A1 / np.pi))  
     r_m1 = (r_root1 + r_tip1) / 2.0
+    U1 = omega * r_m1
 
     # Calcul des pertes totales
     eta_hpt = donnees_hpt['eta_iso']
     dh0_is = dh0 / eta_hpt
     perte_totale = dh0_is - dh0
-    perte_stator = (1 - contraintes['reaction']) * perte_totale
 
     # Thermodynamique de la station 2 (fixée par la réaction)
     T2 = T3 + (contraintes['reaction'] * dh0) / cp
     V2 = np.sqrt(2 * cp * (T01 - T2))
     T02 = T01
 
-    #Perte dans le stator
+    # Station 3
+    Vru3 = Vu3 - U3
+    alpha_rel3 = np.arctan(Vru3 / Va3)
+    Vr3 = np.sqrt(Va3**2 + Vru3**2)
+    Mr3 = Vr3 / np.sqrt(gamma * R_gaz * T3)
+    P0r3 = P3 * (1 + ((gamma -1)/2) * Mr3**2)**(gamma / (gamma -1))
+
+    M2 = V2 / np.sqrt(gamma * R_gaz * T2) #Calcul peut-être fait avant la boucle car depend pas de Va2
+
     A2 = A3
 
-    T2s = T2 - perte_stator / cp
-    P2 = P01 * (T2s / T01)**(gamma / (gamma - 1))
-    rho2 = P2 / (R_gaz * T2)
-    Va2 = m_dot / (rho2 * A2)
-    M2 = V2 / np.sqrt(gamma * R_gaz * T2)
+    def residual(Va2_guess):
+        #Cette fonction sert à calculer le Va2 nécessaire pour avoir un rendement de 0.88
+
+        Va2 = Va2_guess[0]
+
+        #Limite le solveur à ce qu'il peut explorer, sinon y peut aller ou on veut pas
+        if Va2 <= 0 or Va2 >= V2:
+            return [1e10]
+
+        
+        rho2 = m_dot / (Va2 * A2)
+        P2 = rho2 * R_gaz * T2
+        M2 = V2 / np.sqrt(gamma * R_gaz * T2)
+        P02 = P2 * (1 + (gamma - 1) * M2**2 /2)**(gamma / (gamma -1))
+        Y_N = (P01 - P02) / (P02 - P2)
+
+        Vu2 = np.sqrt(V2**2 - Va2**2)
+        U2 = (dh0 + U3 * Vu3) / Vu2
+        Vru2 = Vu2 - U2
+        Vr2 = np.sqrt(Va2**2 + Vru2**2)
+        Mr2 = Vr2 / np.sqrt(gamma * R_gaz * T2)
+        P0r2 = P2 * (1 + ((gamma -1)/2) * Mr2**2)**(gamma / (gamma -1))
+        Y_R = (P0r2 - P0r3) / (P0r3 - P3)
+
+        lambda_N = Y_N / (1 + 0.5 * gamma * M2**2)
+        lambda_R = Y_R / (1 + 0.5 * gamma * Mr3**2)
+        rendement = 1 / (1 + (lambda_N * V2**2 + lambda_R * Vr3**2) / (2 * cp * (T01 - T03)))
+
+        return [rendement - eta_hpt]
+
+    Va2_init = 170 #On pose une valeur de départ pour le solveur
+    Va2 = fsolve(residual, [Va2_init], xtol=tolerance)[0]
+
+    rho2 = m_dot / (Va2 * A2)
+    P2 = rho2 * R_gaz * T2
     P02 = P2 * (1 + (gamma - 1) * M2**2 /2)**(gamma / (gamma -1))
     Y_N = (P01 - P02) / (P02 - P2)
 
     Vu2 = np.sqrt(V2**2 - Va2**2)
     U2 = (dh0 + U3 * Vu3) / Vu2
+    Vru2 = Vu2 - U2
+    Vr2 = np.sqrt(Va2**2 + Vru2**2)
+    Mr2 = Vr2 / np.sqrt(gamma * R_gaz * T2)
+    P0r2 = P2 * (1 + ((gamma -1)/2) * Mr2**2)**(gamma / (gamma -1))
+    Y_R = (P0r2 - P0r3) / (P0r3 - P3)
+
+    lambda_N = Y_N / (1 + 0.5 * gamma * M2**2)
+    lambda_R = Y_R / (1 + 0.5 * gamma * Mr3**2)
+    rendement = 1 / (1 + (lambda_N * V2**2 + lambda_R * Vr3**2) / (2 * cp * (T01 - T03)))
+
+    #Calcul dimensions ailette à station 2
     r_m2 = U2 / omega
     r_root2 = r_root3
     r_tip2 = r_m2 * 2 - r_root2
@@ -126,30 +175,11 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
 
     # Station 2
     alpha2 = np.arctan(Vu2 / Va2)
-    Vru2 = Vu2 - U2
     alpha_rel2 = np.arctan(Vru2 / Va2)
-    Vr2 = np.sqrt(Va2**2 + Vru2**2)
-
-    # Station 3
-    Vru3 = Vu3 - U3
-    alpha_rel3 = np.arctan(Vru3 / Va3)
-    Vr3 = np.sqrt(Va3**2 + Vru3**2)
-
-    # Perte dans le rotor
-    Mr2 = Vr2 / np.sqrt(gamma * R_gaz * T2)
-    P0r2 = P2 * (1 + ((gamma -1)/2) * Mr2**2)**(gamma / (gamma -1))
-    Mr3 = Vr3 / np.sqrt(gamma * R_gaz * T3)
-    P0r3 = P3 * (1 + ((gamma -1)/2) * Mr3**2)**(gamma / (gamma -1))
-    Y_R = (P0r2 - P0r3) / (P0r3 - P3)
 
     # Viscosité stator/rotor
     Visc_s = mu0 * (T2 / T0_suth)**1.5 * (T0_suth + S) / (T2 + S)
     Visc_r = mu0 * (T3 / T0_suth)**1.5 * (T0_suth + S) / (T3 + S)
-
-    #Calcul du rendement
-    lambda_N = Y_N / (1 + 0.5 * gamma * M2**2)
-    lambda_R = Y_R / (1 + 0.5 * gamma * Mr3**2)
-    rendement = 1 / (1 + (lambda_N * V2**2 + lambda_R * Vr3**2) / (2 * cp * (T01 - T03)))
 
     # --- Sauvegarde structurée ---
     donnees['P'] = {1: P1, 2: P2, 3: P3}
@@ -169,7 +199,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
 
     donnees['Rpm'] = rpm
     donnees['omega'] = omega
-    donnees['U'] = {2: U2, 3: U3}
+    donnees['U'] = {1: U1, 2: U2, 3: U3}
     donnees['Va'] = {1: Va1, 2: Va2, 3: Va3}
     donnees['Vu'] = {1: Vu1, 2: Vu2, 3: Vu3}
     donnees['Vr'] = {2: Vr2, 3: Vr3}
@@ -185,6 +215,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     print(f"Angles Rel.[deg]  : Alpha_rel1=Alpha1° | Alpha_rel2={np.degrees(alpha_rel2):.2f}° | Alpha_rel3={np.degrees(alpha_rel3):.2f}°")
     print(f"Coefficient de pertes : Stator (Y_N) = {Y_N:.4f}, Rotor (Y_R) = {Y_R:.4f}")
     print(f"Rendement de l'étage: {rendement:.2f}")
+    print(f"Va2 : {Va2:.0f} m/s")
 
 def plot_geometrie_turbine():
     # Extraction des données du dictionnaire
