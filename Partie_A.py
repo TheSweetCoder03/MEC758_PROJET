@@ -188,15 +188,17 @@ def Station_5 (po4, to4, whpc, s4, to3):
     mpt = mp * (1 - pap) * (1 + f) + mp * pap
     to4u = ((mp * (1 - pap) * (1 + f)) * to4 * cpt + mp * pap * to3 * cpc)/ (mpt * cpt)
 
+    po4p = (1 - perte_it) * po4
+
     to5 = to4u-(whpc/(mpt*cpt))
     to5s = to4u - (to4u-to5)/nthp
-    po5 = po4 * (to5s/to4u)**(y/(y-1))
+    po5 = po4p * (to5s/to4u)**(y/(y-1))
 
     whpt = mpt * cpt * (to4u - to5)
 
     r = cpt * ((y-1)/y)
 
-    s5 = s4 + cpt * np.log(to5/to4u) - r * np.log(po5/po4)
+    s5 = s4 + cpt * np.log(to5/to4u) - r * np.log(po5/po4p)
 
     station[5] = {"Po": po5, "To": to5, "w": whpt, "s": s5, "mpt": mpt}
 
@@ -231,7 +233,6 @@ def Station_7 (po6, to6, s6, mpt):
     y = cte_turb["yt"]
     cpt = cte_turb["cpt"]
     perte_et = cte_turb["deltapet"]
-    perte_it = cte_turb["deltapit"]
     pa = cte_amb["pa"]
     f = cte_cc["f"]
     mp = cte_comp["mpt"]
@@ -239,9 +240,7 @@ def Station_7 (po6, to6, s6, mpt):
 
     p7 = pa * (1 + perte_et)
 
-    po6p = po6 * (1 - perte_it)
-
-    t7s = to6 * (p7/po6p)**((y-1)/y)
+    t7s = to6 * (p7/po6)**((y-1)/y)
     t7 = to6 - (to6-t7s)*ntp
 
     wpt = mpt * cpt * (to6 - t7)
@@ -249,7 +248,7 @@ def Station_7 (po6, to6, s6, mpt):
 
     r = cpt * ((y-1)/y)
 
-    s7 = s6 + cpt * np.log(t7/to6) - r * np.log(p7/po6p)
+    s7 = s6 + cpt * np.log(t7/to6) - r * np.log(p7/po6)
 
     mpcc = mp * (1 - pap)
 
