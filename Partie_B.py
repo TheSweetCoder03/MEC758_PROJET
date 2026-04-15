@@ -149,6 +149,12 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     Va2_init = 170 #On pose une valeur de départ pour le solveur
     Va2 = fsolve(residual, [Va2_init], xtol=tolerance)[0]
 
+    #On ajoute une sécurité qui vérifie que le solveur converge bien
+    Va2_sol, _, ier, msg = fsolve(residual, [Va2_init], xtol=tolerance, full_output=True)
+    Va2 = Va2_sol[0]
+    if ier != 1:
+        raise ValueError(f"[ERREUR] fsolve n'a pas convergé : {msg}")
+
     rho2 = m_dot / (Va2 * A2)
     P2 = rho2 * R_gaz * T2
     P02 = P2 * (1 + (gamma - 1) * M2**2 /2)**(gamma / (gamma -1))
