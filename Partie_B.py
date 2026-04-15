@@ -95,10 +95,9 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     r_m1 = (r_root1 + r_tip1) / 2.0
     U1 = omega * r_m1
 
-    # Calcul des pertes totales
+    # Rendement visé
     eta_hpt = donnees_hpt['eta_iso']
-    dh0_is = dh0 / eta_hpt
-    perte_totale = dh0_is - dh0
+
 
     # Thermodynamique de la station 2 (fixée par la réaction)
     T2 = T3 + (contraintes['reaction'] * dh0) / cp
@@ -174,7 +173,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
 
     #Calcul dimensions ailette à station 2
     r_m2 = U2 / omega
-    r_root2 = r_root3
+    r_root2 = r_m2 - (A2 / (4 * r_m2 * np.pi))
     r_tip2 = r_m2 * 2 - r_root2
 
     # CALCUL DES ANGLES (ABSOLUS ET RELATIFS)
