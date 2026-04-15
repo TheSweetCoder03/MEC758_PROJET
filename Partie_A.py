@@ -188,17 +188,15 @@ def Station_5 (po4, to4, whpc, s4, to3):
     mpt = mp * (1 - pap) * (1 + f) + mp * pap
     to4u = ((mp * (1 - pap) * (1 + f)) * to4 * cpt + mp * pap * to3 * cpc)/ (mpt * cpt)
 
-    po4p = po4 * (1 - perte_it)
-
     to5 = to4u-(whpc/(mpt*cpt))
     to5s = to4u - (to4u-to5)/nthp
-    po5 = po4p * (to5s/to4u)**(y/(y-1))
+    po5 = po4 * (to5s/to4u)**(y/(y-1))
 
     whpt = mpt * cpt * (to4u - to5)
 
     r = cpt * ((y-1)/y)
 
-    s5 = s4 + cpt * np.log(to5/to4u) - r * np.log(po5/po4p)
+    s5 = s4 + cpt * np.log(to5/to4u) - r * np.log(po5/po4)
 
     station[5] = {"Po": po5, "To": to5, "w": whpt, "s": s5, "mpt": mpt}
 
