@@ -146,10 +146,10 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
 
         return [rendement - eta_hpt]
 
-    Va2_init = 170 #On pose une valeur de départ pour le solveur
+    Va2_init = 200 #On pose une valeur de départ pour le solveur
     Va2 = fsolve(residual, [Va2_init], xtol=tolerance)[0]
 
-    #On ajoute une sécurité qui vérifie que le solveur converge bien
+    #On ajoute une sécurité qui vérifie que le solveur converge
     Va2_sol, _, ier, msg = fsolve(residual, [Va2_init], xtol=tolerance, full_output=True)
     Va2 = Va2_sol[0]
     if ier != 1:
