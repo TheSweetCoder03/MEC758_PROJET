@@ -135,21 +135,24 @@ def tracer_triangles_vitesses():
     plt.show()
 
 def pertes_incidence():
+    #Calcul des pertes d'incidence avec la méthode de corrélation de Moustapha
 
     # -----------------
     # Données
     # -----------------
-    alpha_1 = Partie_B.donnees['alpha_relatif'][2]
+    alpha_1 = donnees_hc['alpha_relatif'][2]
     alpha_1_deg = np.degrees(alpha_1) 
-    alpha_1_des = donnees_hc['alpha_relatif'][2]
+    alpha_1_des = Partie_B.donnees['alpha_relatif'][2]
     alpha_1_des_deg = np.degrees(alpha_1_des)
     incidence_deg = donnees_hc['incidence']
     d_c = 0.032 # Ratio - Leading eadge Diameter / Chord
     s_c = 0.56 # Ratio - Pitch / Chord
     beta_1 = Partie_B.donnees['alpha'][1] 
     beta_2 = Partie_B.donnees['alpha_relatif'][2]
-    Yp_des = Partie_B.donnees['coefficient_perte'][1] # Coefficient de pertes de profil de AMDC
-    Ys_des = Partie_B.donnees['coefficient_perte'][2] # Coefficient de pertes secondaire de AMDC
+    Yp_des = Partie_B.donnees['coefficient_perte_rotor'][1] # Coefficient de pertes de profil de AMDC on design du rotor
+    Ys_des = Partie_B.donnees['coefficient_perte_rotor'][2] # Coefficient de pertes secondaire de AMDC on design du rotor
+    Ytet_r = Partie_B.donnees['coefficient_perte_rotor'][3] # Coefficient de pertes traling edge de AMDC on design du rotor
+    Ytc_r = Partie_B.donnees['coefficient_perte_rotor'][4] # Coefficient de pertes tip clearance de AMDC on design du rotor
 
     # ---------------------------------
     # Calcul pour les pertes de profil
@@ -163,7 +166,7 @@ def pertes_incidence():
     else :
         d_phi = -5.1734 * (10**-6) * x_p + 7.6902 * (10**-9) * (x_p**2 )
     
-    Yp = Yp_des + d_phi
+    Yp_r = Yp_des + d_phi
 
     # ---------------------------------
     # Calcul pour les pertes secondaires
@@ -175,9 +178,50 @@ def pertes_incidence():
     else:
         ratio_perte_sec = np.exp(0.9 * x_et)
 
-    Ys = Ys_des * ratio_perte_sec
+    Ys_r = Ys_des * ratio_perte_sec
 
-    print(f"Les pertes de profil d'incidence sont de : {Yp:.2f}")
+    Y_rotor = Yp_r + Ys_r + Ytet_r + Ytc_r
+
+    donnees_hc['Y_rotor']= Y_rotor
+
+    print(f"\nLes pertes de profil d'incidence sont de : {Yp_r:.2f}")
     print(f"Le delta_phi pour profil est de : {d_phi:.2f}")
-    print(f"Les pertes secondaires d'incidence sont de : {Ys:.2f}")
+    print(f"Les pertes secondaires d'incidence sont de : {Ys_r:.2f}")
     print(f"Le ratio de perte pour secondaire est de : {ratio_perte_sec:.2f}")
+
+def rendement_incidence(donnees_hpt):
+    #Calcul du rendement de l'étage avec la réduction du RPM (et donc les pertes d'incidences)
+
+    # ------------
+    # Données 
+    # ------------
+    T2 = Partie_B.donnees['T'][2]
+    T3 = Partie_B.donnees['T'][3]
+    R_gaz = Partie_B.donnees['R_gaz']
+    gamma = donnees_hpt['gamma']
+    Vu2 = donnees_hc['Vu'][2]
+    Va2 = donnees_hc['Va'][2]
+    Vr3 = donnees_hc['Vr'][3]
+    T01 = Partie_B.donnees['To'][1]
+    T03 = Partie_B.donnees['To'][3]
+    cp = donnees_hpt['cp']
+    Y_rotor = donnees_hc['Y_rotor']
+    Y_stator = Partie_B.donnees['Y_perte_stator']
+
+
+    # ------------
+    # Calculs
+    # ------------ 
+    V2 = np.sqrt((Va2**2) + (Vu2**2))
+    M2 = V2 / np.sqrt(gamma * R_gaz * T2)
+    lambda_stator = Y_stator / (1 + 0.5 * gamma * M2**2)
+
+    Mr3 = Vr3 / np.sqrt(gamma * R_gaz * T3)
+    lambda_rotor = Y_rotor / (1 + 0.5 * gamma * Mr3**2)
+
+    rendement = 1 / (1 + (lambda_stator * V2**2 + lambda_rotor * Vr3**2) / (2 * cp * (T01 - T03)))
+
+    print(f"\nLe rendement de l'étage est de : {rendement:.2f}")
+
+    
+

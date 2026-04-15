@@ -157,7 +157,8 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     donnees['P'] = {1: P1, 2: P2, 3: P3}
     donnees['M'] = {1: M1, 2: M2, 3: M3}
     donnees['Mr'] = {2: Mr2, 3: Mr3}
-    donnees['To'] = {1: T01, 2: T01, 3: T03}
+    donnees['To'] = {1: T01, 2: T02, 3: T03}
+    donnees['T'] = {1: T1, 2: T2, 3: T3}
     donnees['p'] = {1: rho1, 2: rho2, 3: rho3}
     donnees['alpha'] = {1: deg2rad(contraintes['alpha_1']), 2: alpha2, 3: deg2rad(contraintes['alpha_3'])}
     donnees['alpha_relatif'] = { 2: alpha_rel2, 3: alpha_rel3}
@@ -178,6 +179,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     donnees['Y'] = {1: Y_N, 2: Y_R}
     donnees['nst'] = rendement
     donnees['Visc'] = {'stator': Visc_s, 'rotor': Visc_r}
+    donnees['R_gaz'] = R_gaz
 
     print(f"Régime : {rpm:.0f} RPM")
     print(f"Vitesses Va [m/s] : Va1={Va1:.2f} | Va2={Va2:.2f} | Va3={Va3:.2f}")
@@ -713,7 +715,8 @@ def etape_4(donnees_hpt):
     k_requis = c_r * (Ytc_requis / denominateur)**(1 / 0.78)
     Jeu_requis = k_requis * (nbre_seal)**(0.42)
 
-    donnees['coefficient_perte'] = {1: Yp_moderne_r, 2: Ys_moderne_r}
+    donnees['coefficient_perte_rotor'] = {1: Yp_moderne_r, 2: Ys_moderne_r, 3: Ytet_r, 4: Ytc_r}
+    donnees['Y_perte_stator'] = Ytot_s
 
     print(f"\nÉTAPES 4: Coefficient de perte")
     print(f"Coefficient de pertes : Stator (Y_N) = {Ytot_s:.4f}, Rotor (Y_R) = {Ytot_r:.4f}")

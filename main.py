@@ -23,6 +23,7 @@ def main():
     Partie_C.partie_c()
     Partie_C.tracer_triangles_vitesses()
     Partie_C.pertes_incidence()
+    Partie_C.rendement_incidence(donnees_hpt)
 
 if __name__ == "__main__":
     main()
