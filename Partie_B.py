@@ -115,7 +115,6 @@ def etape_1(donnees_hpt, tolerance=1e-6):
         # 1. Calculs thermodynamiques
         rho2 = m_dot / (Va2 * A2)
         P2 = rho2 * R_gaz * T2
-        M2 = V2 / np.sqrt(gamma * R_gaz * T2)
         P02 = P2 * (1 + (gamma - 1) * M2**2 / 2)**(gamma / (gamma - 1))
         Y_N = (P01 - P02) / (P02 - P2)
 
@@ -130,7 +129,7 @@ def etape_1(donnees_hpt, tolerance=1e-6):
         Y_R = (P0r2 - P0r3) / (P0r3 - P3)
 
         # 2. PÉNALITÉ PHYSIQUE : Les pertes ne peuvent pas être négatives
-        if Y_N < 0.05 or Y_R < 0.05:
+        if Y_N < 0.001 or Y_R < 0.001:
             # On retourne une erreur massive proportionnelle à l'infraction
             # Cela crée un "entonnoir" qui ramène le solveur vers la physique réelle
             return 1e4 + abs(Y_N)*1000 + abs(Y_R)*1000 
@@ -141,7 +140,7 @@ def etape_1(donnees_hpt, tolerance=1e-6):
 
         # Les coefficients de perte doivent être strictement positifs
         if lambda_N < 0 or lambda_R < 0:
-            return [1e10]
+            return 1e10
 
         rendement = 1 / (1 + (lambda_N * V2**2 + lambda_R * Vr3**2) / (2 * cp * (T01 - T03)))
 
@@ -182,7 +181,7 @@ def etape_1(donnees_hpt, tolerance=1e-6):
 
     #Calcul dimensions ailette à station 2
     r_m2 = U2 / omega
-    r_root2 = r_m2 - (A2 / (4 * r_m2 * np.pi))
+    r_root2 = r_root3
     r_tip2 = r_m2 * 2 - r_root2
 
     # CALCUL DES ANGLES (ABSOLUS ET RELATIFS)
