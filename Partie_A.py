@@ -187,7 +187,6 @@ def Station_5 (po4, to4u, whpc, s4, mpt):
     y = cte_turb["yt"]
     cpt = cte_turb["cpt"]
     
-
     to5 = to4u-(whpc/(mpt*cpt))
     to5s = to4u - (to4u-to5)/nthp
     po5 = po4 * (to5s/to4u)**(y/(y-1))
@@ -271,7 +270,7 @@ def print_station():
     print(f"\nSFC: {station[7]['sfc']:.6f} kg/kW.h")
     print(f"Puissance de la turbine de puissance: {station[7]['hp']:.2f} HP")
     print(f"Le nombre d'étages LPC : {station[2]['Nb_etage']:.2f} étages")
-    print(f"Le nombre d'étages HPC : {station[2]['Nb_etage']:.2f} étages")
+    print(f"Le nombre d'étages HPC : {station[3]['Nb_etage']:.2f} étages")
 
 def plot_cycle():
 
