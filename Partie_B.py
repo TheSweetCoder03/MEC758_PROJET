@@ -151,7 +151,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
 
     result = minimize_scalar(
         lambda Va2s: residual([Va2s])[0]**2,
-        bounds=(1.0, V2 - 1.0),
+        bounds=(1, V2 - 1.0),
         method='bounded',
         options={'xatol': tolerance}
     )

@@ -123,7 +123,7 @@ def Station_3 (po2, to2, s2):
     to3s = to2 * (rphp)**((y-1)/y)
     to3 = to2 + (to3s - to2) / nchp
 
-    whpc = mp * (1 - pap) * cp * (to3 - to2)
+    whpc = mp * cp * (to3 - to2)
 
     r = cp * ((y-1)/y)
 
@@ -190,7 +190,7 @@ def Station_5 (po4, to4u, whpc, s4, mpt):
     to5s = to4u - (to4u-to5)/nthp
     po5 = po4 * (to5s/to4u)**(y/(y-1))
 
-    whpt = mpt * cpt * (to4u - to5)
+    whpt = whpc
 
     r = cpt * ((y-1)/y)
 
