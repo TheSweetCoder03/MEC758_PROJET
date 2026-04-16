@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.optimize import fsolve
+from scipy.optimize import fsolve, minimize_scalar
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import Tableau
@@ -140,18 +140,26 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
 
         lambda_N = Y_N / (1 + 0.5 * gamma * M2**2)
         lambda_R = Y_R / (1 + 0.5 * gamma * Mr3**2)
+
+        # Les coefficients de perte doivent être strictement positifs
+        if lambda_N < 0 or lambda_R < 0:
+            return [1e10]
+
         rendement = 1 / (1 + (lambda_N * V2**2 + lambda_R * Vr3**2) / (2 * cp * (T01 - T03)))
 
         return [rendement - eta_hpt]
 
-    Va2_init = 200 #On pose une valeur de départ pour le solveur
-    Va2 = fsolve(residual, [Va2_init], xtol=tolerance)[0]
+    result = minimize_scalar(
+        lambda Va2s: residual([Va2s])[0]**2,
+        bounds=(1.0, V2 - 1.0),
+        method='bounded',
+        options={'xatol': tolerance}
+    )
+    Va2 = result.x
 
-    #On ajoute une sécurité qui vérifie que le solveur converge
-    Va2_sol, _, ier, msg = fsolve(residual, [Va2_init], xtol=tolerance, full_output=True)
-    Va2 = Va2_sol[0]
-    if ier != 1:
-        raise ValueError(f"[ERREUR] fsolve n'a pas convergé : {msg}")
+    rendement_atteint = eta_hpt + residual([Va2])[0]
+    if abs(residual([Va2])[0]) > 1e-4:
+        print(f"[AVERTISSEMENT] Rendement cible non atteint. Rendement obtenu = {rendement_atteint:.4f}")
 
     rho2 = m_dot / (Va2 * A2)
     P2 = rho2 * R_gaz * T2
