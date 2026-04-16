@@ -175,7 +175,7 @@ def Station_4 (po3, to3, s3):
 
     #Calcul de la température To4 une fois que l'aire de refroidissement est mixée
     mpt = mp * (1 - pap) * (1 + f) + mp * pap
-    to4u = ((mp * (1 - pap) * (1 + f)) * to4 * cpt + mp * pap * to3 * cpc)/ (mpt * cpt)
+    to4u = ((mp * (1 - pap) * (1 + f)) * to4 * cp4 + mp * pap * to3 * cpc)/ (mpt * cpt)
 
     station[4] = {"Po": po4, "To": to4u, "s": s4}
 
