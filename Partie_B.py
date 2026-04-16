@@ -534,8 +534,10 @@ def etape_3(donnees_hpt):
     pas_r = (zweifelr * car) / (2 * (np.tan(alpha_r2) + np.tan(alpha_r3)) * (np.cos(alpha_r3))**2)
 
     # Calcul du nombre d'ailettes (Périmètre moyen / pas)
-    ns = 2 * np.pi * rm2 / pas_s
-    nr = 2 * np.pi * rm3 / pas_r
+    ns = int(np.ceil(2 * np.pi * rm2 / pas_s))
+    nr = int(np.ceil(2 * np.pi * rm3 / pas_r))
+
+    
 
     # --- Sauvegarde structurée ---
     donnees['hm'] = {'stator': hms, 'rotor': hmr}
@@ -544,8 +546,8 @@ def etape_3(donnees_hpt):
     donnees['pas'] = {'stator': pas_s, 'rotor': pas_r}
     
     print(f"\nÉTAPES 3: Paramètres des aubes")
-    print(f"Stator | Corde axiale: {cas:.4f} m | Pas: {pas_s:.4f} m | Aubes: {ns:.1f} -> {int(np.ceil(ns))} aubes")
-    print(f"Rotor  | Corde axiale: {car:.4f} m | Pas: {pas_r:.4f} m | Aubes: {nr:.1f} -> {int(np.ceil(nr))} aubes")
+    print(f"Stator | Corde axiale: {cas:.4f} m | Pas: {pas_s:.4f} m | Aubes: {ns:.1f}")
+    print(f"Rotor  | Corde axiale: {car:.4f} m | Pas: {pas_r:.4f} m | Aubes: {nr:.1f}")
 
 def etape_4(donnees_hpt):
     # Extraction des variables du dictionnaire 'donnees'
@@ -607,7 +609,7 @@ def etape_4(donnees_hpt):
     tmax_s = 0.2 * c_s    # Épaisseur max ailette stator
     tmax_r = 0.2 * c_r    # Épaisseur max ailette rotor
     k_s = 0                # Jeu radial ailette stator
-    k_r = 0.001         # Jeu radial ailette rotor
+    k_r = 0.0003         # Jeu radial ailette rotor
 
     # Extraction des variables du dictionnaire 'donnees_hpt'
     y = donnees_hpt['gamma']
@@ -625,8 +627,7 @@ def etape_4(donnees_hpt):
     Yp_2_s = Tableau.extraire_donnee_graphique(x=(pas_s/c_s), y=abs(np.degrees(alpha_2)), figure=2)
 
     # Perte du profil (Yp) -
-    ratio_s = abs(alpha_1 / alpha_2)
-    Yp_AMDC_s = (Yp_1_s + (ratio_s**2) * (Yp_2_s - Yp_1_s)) * ((tmax_s / c_s) / 0.2)**ratio_s
+    Yp_AMDC_s = (Yp_1_s + abs(beta_1/alpha_2)*(beta_1/alpha_2) * (Yp_2_s - Yp_1_s)) * ((tmax_s / c_s) / 0.2)**(beta_1/alpha_2)
 
     k1_s = 1 - 1.25 * abs(M2 - 0.2) if M2 > 0.2 else 1
     k2_s = abs(M1 / M2)**2
@@ -680,8 +681,7 @@ def etape_4(donnees_hpt):
     Yp_2_r = Tableau.extraire_donnee_graphique(x=(pas_r/c_r), y=abs(np.degrees(beta_3)), figure=2)
 
     # Perte du profil (Yp)
-    ratio_r = abs(beta_2 / beta_3)
-    Yp_AMDC_r = (Yp_1_r + (ratio_r**2) * (Yp_2_r - Yp_1_r)) * ((tmax_r / c_r) / 0.2)**ratio_r
+    Yp_AMDC_r = (Yp_1_r + abs(beta_2 / beta_3) * (beta_2 / beta_3) * (Yp_2_r - Yp_1_r)) * ((tmax_r / c_r) / 0.2)**(beta_2 / beta_3)
 
     k1_r = 1 - 1.25 * abs(Mr3 - 0.2) if Mr3 > 0.2 else 1
     k2_r = abs(Mr2 / Mr3)**2
@@ -727,6 +727,13 @@ def etape_4(donnees_hpt):
         f_re_r = 1
     else:
         f_re_r = (Re_r / 1000000)**-0.2
+    
+    print("\n=== RÉCAPITULATIF DES COEFFICIENTS (ROTOR) ===")
+    print(f"Perte de profil (Yp_moderne_r)   : {Yp_moderne_r:.5f}")
+    print(f"Facteur de Reynolds (f_re_r)     : {f_re_r:.5f}")
+    print(f"Perte secondaire (Ys_moderne_r)  : {Ys_moderne_r:.5f}")
+    print(f"Perte bord de fuite (Ytet_r)     : {Ytet_r:.5f}")
+    print(f"Perte de jeu radial (Ytc_r)      : {Ytc_r:.5f}")
 
     Ytot_r = Yp_moderne_r * f_re_r + Ys_moderne_r + Ytet_r + Ytc_r  
 
@@ -737,10 +744,11 @@ def etape_4(donnees_hpt):
     Ytot_R2 = donnees['Y'][2]
     Ytc_requis = Ytot_R2 - (Yp_moderne_r * f_re_r) - Ys_moderne_r - Ytet_r
     
+    print(f"\nÉTAPES 4: Coefficient de perte")
     if Ytc_requis <= 0:
         k_requis = 0
         Jeu_requis = 0
-        print(f"\nATTENTION : Budget de perte insuffisant ! (Ytc_requis = {Ytc_requis:.4f})")
+        print(f"ATTENTION : Budget de perte insuffisant ! (Ytc_requis = {Ytc_requis:.4f})")
         print(f"Les pertes de profil et secondaires sont déjà supérieures au total visé.")
     
     else:
@@ -748,13 +756,9 @@ def etape_4(donnees_hpt):
         k_requis = c_r * (Ytc_requis / denominateur)**(1 / 0.78)
         Jeu_requis = k_requis * (nbre_seal)**(0.42)
         
-    k_requis = c_r * (Ytc_requis / denominateur)**(1 / 0.78)
-    Jeu_requis = k_requis * (nbre_seal)**(0.42)
-
     donnees['coefficient_perte_rotor'] = {1: Yp_moderne_r, 2: Ys_moderne_r, 3: Ytet_r, 4: Ytc_r}
     donnees['Y_perte_stator'] = Ytot_s
 
-    print(f"\nÉTAPES 4: Coefficient de perte")
     print(f"Coefficient de pertes : Stator (Y_N) = {Ytot_s:.4f}, Rotor (Y_R) = {Ytot_r:.4f}")
     print(f"Jeu radial rotor requis : {Jeu_requis * 1000:.4f} mm")
 
