@@ -190,6 +190,8 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     alpha2 = np.arctan(Vu2 / Va2)
     alpha_rel2 = np.arctan(Vru2 / Va2)
 
+    coeff_perte_temp = (2 * Va2 / U2) * (np.tan(alpha_rel2) + np.tan(alpha_rel3))
+
     # Viscosité stator/rotor
     Visc_s = mu0 * (T2 / T0_suth)**1.5 * (T0_suth + S) / (T2 + S)
     Visc_r = mu0 * (T3 / T0_suth)**1.5 * (T0_suth + S) / (T3 + S)

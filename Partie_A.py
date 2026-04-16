@@ -48,6 +48,8 @@ cte_turb= {
 
 station = {}
 
+donnees = {}
+
 def Station_1 ():
     # Station 1 : Entrée de l'air dans le compresseur basse pression
     p1 = cte_amb["pa"]
@@ -63,6 +65,8 @@ def Station_1 ():
 
     # Enregistrer les résultats de la station 1
     station[1] = {"Po": po1, "To": to1, "s": s1}
+    donnees['T1'] = t1
+    donnees['s1'] = s1
 
     return po1, to1, s1
 
@@ -70,6 +74,7 @@ def Station_2 (po1, to1, s1):
     # Station 2 : Entrée de l'air dans le compresseur haute pression
     rpbp = cte_comp["rpbp"]
     ncbp = cte_comp["ncbp"]
+    haller = cte_comp["haller"]
     y = cte_comp["yc"]
     mp = cte_comp["mpt"]
     cp = cte_comp["cpc"]
@@ -97,12 +102,15 @@ def Station_2 (po1, to1, s1):
     v1 = mp / (rho * A)
     va = v1 * np.cos(alpha1)
     Um = rm * rpmlpc
-    Vru2 = fsolve(lambda Vru2s : 0.72 - (np.sqrt(va**2 + Vru2s**2)/(np.sqrt(va**2 + (Um - Vru2s)**2))), x0 = [Um/2])[0]
+    Vru2 = fsolve(lambda Vru2s : haller - (np.sqrt(va**2 + Vru2s**2)/(np.sqrt(va**2 + (Um - Vru2s)**2))), x0 = [Um/2])[0]
     Vru1 = Um - Vru2
     deltaT0max = (Um * (Vru1 - Vru2)) / cp
     n_etages = int((to2 - to1) / deltaT0max) + 1
 
     station[2] = {"Po": po2, "To": to2, "w": wlpc, "s": s2, "Nb_etage": n_etages}
+    donnees['To2s'] = to2s
+    donnees['s2'] = s2
+    
 
     return po2, to2, wlpc, s2
 
@@ -110,6 +118,7 @@ def Station_3 (po2, to2, s2):
     # Station 3 : Entrée de l'air dans la chambre à combustion
     rphp = cte_comp["rphp"]
     nchp = cte_comp["nchp"]
+    haller = cte_comp["haller"]
     y = cte_comp["yc"]
     mp = cte_comp["mpt"]
     cp = cte_comp["cpc"]
@@ -142,12 +151,14 @@ def Station_3 (po2, to2, s2):
     Rt = Rr / rr
     rm = (Rt + Rr) / 2
     Um = rm * rpmhpc
-    Vru2 = fsolve(lambda Vru2s : 0.72 - (np.sqrt(va1hpc**2 + Vru2s**2)/(np.sqrt(va1hpc**2 + (Um - Vru2s)**2))), x0 = [Um/2])[0]
+    Vru2 = fsolve(lambda Vru2s : haller - (np.sqrt(va1hpc**2 + Vru2s**2)/(np.sqrt(va1hpc**2 + (Um - Vru2s)**2))), x0 = [Um/2])[0]
     Vru1 = Um - Vru2
     deltaT0max = (Um * (Vru1 - Vru2)) / cp
     n_etages = int((to3 - to1hpc) / deltaT0max) + 1
 
     station[3] = {"Po": po3, "To": to3, "w": whpc, "s": s3, "Nb_etage": n_etages}
+    donnees['s3'] = s3
+    donnees['To3s'] = to3s
 
     return po3, to3, whpc, s3
 
@@ -177,6 +188,7 @@ def Station_4 (po3, to3, s3):
     to4u = ((mp * (1 - pap) * (1 + f)) * to4 * cp4 + mp * pap * to3 * cpc)/ (mpt * cpt)
 
     station[4] = {"Po": po4, "To": to4u, "s": s4}
+    donnees['s4'] = s4
 
     return po4, to4u, s4, mpt
 
@@ -197,6 +209,8 @@ def Station_5 (po4, to4u, whpc, s4, mpt):
     s5 = s4 + cpt * np.log(to5/to4u) - r * np.log(po5/po4)
 
     station[5] = {"Po": po5, "To": to5, "w": whpt, "s": s5, "mpt": mpt}
+    donnees['s5'] = s5
+    donnees['To5s'] = to5s
 
     return po5, to5, whpt, s5, mpt
 
@@ -220,6 +234,9 @@ def Station_6 (po5, to5, wlpc, s5, mpt):
     s6 = s5 + cpt * np.log(to6/to5) - r * np.log(po6/po5p)
 
     station[6] = {"Po": po6, "To": to6, "w": wlpt, "s": s6}
+    donnees['s6'] = s6
+    donnees['To6s'] = to6s
+    donnees['Po5p'] = po5p
 
     return po6, to6, wlpt, s6
 
@@ -254,6 +271,9 @@ def Station_7 (po6, to6, s6, mpt):
     sfc = (mpcc * f * 3600) / (wpt / 1000)
 
     station[7] = {"Po": p7, "To": t7, "w": wpt, "hp": hp, "s": s7, "sfc": sfc}
+    donnees['s7'] = s7
+    donnees['T7s'] = t7s
+    donnees['Po6p'] = po6p
 
     return p7, t7, wpt, hp, s7, sfc
 
