@@ -8,8 +8,8 @@ contraintes = {
     # Paramètres de l'étage
     'M1': 0.14,                    # Mach entrée 
     'M3': 0.37,                    # Mach sortie 
-    'alpha_1': -10.0,              # Angle absolu entrée stator 
-    'alpha_3': 22.0,               # Angle absolu sortie rotor 
+    'alpha_1': 10.0,              # Angle absolu entrée stator 
+    'alpha_3': -22.0,               # Angle absolu sortie rotor 
     'reaction': 0.63,              # Degré de réaction 
     'AN2_min': 1.6129e7,           # Surface fois vitesse au carré (converti en m^2 RPM) 
     'AN2_max': 3.2258e7,           
@@ -82,7 +82,6 @@ def etape_1(donnees_hpt, tolerance=1e-6):
 
     V1 = M1 * np.sqrt(gamma * R_gaz * T1)
     Va1 = V1 * np.cos(deg2rad(contraintes['alpha_1']))
-    Vu1 = V1 * np.sin(deg2rad(contraintes['alpha_1']))
 
     A1 = m_dot / (rho1 * Va1)
     r_tip1 = r_tip3
@@ -94,7 +93,7 @@ def etape_1(donnees_hpt, tolerance=1e-6):
 
 
     # Thermodynamique de la station 2 (fixée par la réaction)
-    dh = dh0 - (V1**2 - V3**2) / 2 
+    dh = dh0 - (V1**2 - V3**2) / 2
     T2 = T3 + (contraintes['reaction'] * dh) / cp
     V2 = np.sqrt(2 * cp * (T01 - T2))
     T02 = T01
@@ -106,54 +105,78 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     Mr3 = Vr3 / np.sqrt(gamma * R_gaz * T3)
     P0r3 = P3 * (1 + ((gamma -1)/2) * Mr3**2)**(gamma / (gamma -1))
 
-    M2 = V2 / np.sqrt(gamma * R_gaz * T2) #Calcul peut-être fait avant la boucle car depend pas de Va2
+    M2 = V2 / np.sqrt(gamma * R_gaz * T2)
 
     A2 = A3
+    def tracer_diagnostic_va2(v_min=50, v_max=350):
+        print(f"Génération du graphique de diagnostic...")
+        v_test = np.linspace(v_min, v_max, 100)
+        y_rendement, y_pertes_N, y_pertes_R = [], [], []
+
+        for v in v_test:
+            # Calcul simplifié identique au solveur
+            rho2_tmp = m_dot / (v * A2)
+            P2_tmp = rho2_tmp * R_gaz * T2
+            P02_tmp = P2_tmp * (1 + (gamma - 1) * M2**2 / 2)**(gamma / (gamma - 1))
+            yn = (P01 - P02_tmp) / (P02_tmp - P2_tmp)
+            
+            vu2_tmp = np.sqrt(max(0, V2**2 - v**2))
+            u2_tmp = (dh0 + U3 * Vu3) / (vu2_tmp + 1e-6)
+            vru2_tmp = vu2_tmp - u2_tmp
+            vr2_tmp = np.sqrt(v**2 + vru2_tmp**2)
+            mr2_tmp = vr2_tmp / np.sqrt(gamma * R_gaz * T2)
+            p0r2_tmp = P2_tmp * (1 + (gamma-1)/2 * mr2_tmp**2)**(gamma/(gamma-1))
+            yr = (p0r2_tmp - P0r3) / (P0r3 - P3)
+            
+            ln = yn / (1 + 0.5 * gamma * M2**2)
+            lr = yr / (1 + 0.5 * gamma * Mr3**2)
+            rend = 1 / (1 + (ln * V2**2 + lr * Vr3**2) / (2 * cp * (T01 - T03)))
+            
+            y_rendement.append(rend)
+            y_pertes_N.append(yn)
+            y_pertes_R.append(yr)
+
+        plt.figure(figsize=(10, 6))
+        plt.subplot(2,1,1)
+        plt.plot(v_test, y_rendement, label='Rendement (eta)')
+        plt.axhline(eta_hpt, color='r', linestyle='--', label='Cible 0.88')
+        plt.ylabel('Rendement'); plt.legend(); plt.grid(True)
+        
+        plt.subplot(2,1,2)
+        plt.plot(v_test, y_pertes_N, label='Y_Stator')
+        plt.plot(v_test, y_pertes_R, label='Y_Rotor')
+        plt.ylabel('Pertes Y'); plt.xlabel('Va2 [m/s]'); plt.legend(); plt.grid(True)
+        plt.axhline(1, color='r', linestyle='--', label='Cible 0.88')
+        plt.ylim(0, 2)
+        plt.show()
+
+    tracer_diagnostic_va2(v_min=25, v_max=350)
+
 
     def objectif_Va2(Va2):
-
-        # 1. Calculs thermodynamiques
         rho2 = m_dot / (Va2 * A2)
         P2 = rho2 * R_gaz * T2
         P02 = P2 * (1 + (gamma - 1) * M2**2 / 2)**(gamma / (gamma - 1))
         Y_N = (P01 - P02) / (P02 - P2)
 
-        # Protection : Empêche la racine carrée d'un nombre négatif
         Vu2 = np.sqrt(max(0, V2**2 - Va2**2)) 
-        
-        U2 = (dh0 + U3 * Vu3) / Vu2
+        U2 = (dh0 + U3 * Vu3) / (Vu2 + 1e-6)
         Vru2 = Vu2 - U2
         Vr2 = np.sqrt(Va2**2 + Vru2**2)
         Mr2 = Vr2 / np.sqrt(gamma * R_gaz * T2)
         P0r2 = P2 * (1 + ((gamma - 1)/2) * Mr2**2)**(gamma / (gamma - 1))
         Y_R = (P0r2 - P0r3) / (P0r3 - P3)
 
-        # 2. PÉNALITÉ PHYSIQUE : Les pertes ne peuvent pas être négatives
         if Y_N < 0.001 or Y_R < 0.001:
-            # On retourne une erreur massive proportionnelle à l'infraction
-            # Cela crée un "entonnoir" qui ramène le solveur vers la physique réelle
             return 1e4 + abs(Y_N)*1000 + abs(Y_R)*1000 
 
-        # 3. Calcul du rendement
         lambda_N = Y_N / (1 + 0.5 * gamma * M2**2)
         lambda_R = Y_R / (1 + 0.5 * gamma * Mr3**2)
-
-        # Les coefficients de perte doivent être strictement positifs
-        if lambda_N < 0 or lambda_R < 0:
-            return 1e10
-
         rendement = 1 / (1 + (lambda_N * V2**2 + lambda_R * Vr3**2) / (2 * cp * (T01 - T03)))
 
-        # 5. On retourne l'écart au carré (Moindres Carrés)
         return (rendement - eta_hpt)**2
 
-    # Lancement du solveur scalaire avec méthode 'bounded'
-    res = minimize_scalar(
-        objectif_Va2, 
-        bounds=(50, 300), 
-        method='bounded',
-        options={'xatol': tolerance}
-    )
+    res = minimize_scalar(objectif_Va2, bounds=(100, 250), method='bounded')
     
     # Vérification de la convergence
     if not res.success:
@@ -214,7 +237,7 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     donnees['omega'] = omega
     donnees['U'] = {1: U2, 2: U3}
     donnees['Va'] = {1: Va1, 2: Va2, 3: Va3}
-    donnees['Vu'] = {1: Vu1, 2: Vu2, 3: Vu3}
+    donnees['Vu'] = {1: Vu2, 2: Vu3}
     donnees['Vr'] = {2: Vr2, 3: Vr3}
 
     donnees['Y'] = {1: Y_N, 2: Y_R}
@@ -225,7 +248,7 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     print(f"Régime : {rpm:.0f} RPM")
     print(f"Vitesses Va [m/s] : Va1={Va1:.2f} | Va2={Va2:.2f} | Va3={Va3:.2f}")
     print(f"Angles Abs.[deg]  : Alpha1={contraintes['alpha_1']:.2f}° | Alpha2={np.degrees(alpha2):.2f}° | Alpha3={contraintes['alpha_3']:.2f}°")
-    print(f"Angles Rel.[deg]  : Alpha_rel1=Alpha1° | Alpha_rel2={np.degrees(alpha_rel2):.2f}° | Alpha_rel3={np.degrees(alpha_rel3):.2f}°")
+    print(f"Angles Rel.[deg]  :  Alpha_rel2={np.degrees(alpha_rel2):.2f}° | Alpha_rel3={np.degrees(alpha_rel3):.2f}°")
     print(f"Coefficient de pertes : Stator (Y_N) = {Y_N:.4f}, Rotor (Y_R) = {Y_R:.4f}")
     print(f"Rendement de l'étage: {rendement:.2f}")
     print(f"Va2 : {Va2:.0f} m/s")
@@ -315,6 +338,8 @@ def tracer_limites_rpm():
     plt.show()
 
 def tracer_triangles_vitesses():
+    a1 = donnees['alpha'][1]
+    
     U2 = donnees['U'][1]
     U3 = donnees['U'][2]
     
@@ -322,9 +347,8 @@ def tracer_triangles_vitesses():
     Va2 = donnees['Va'][2]
     Va3 = donnees['Va'][3]
 
-    Vu1 = donnees['Vu'][1]
-    Vu2 = donnees['Vu'][2]
-    Vu3 = donnees['Vu'][3]
+    Vu2 = donnees['Vu'][1]
+    Vu3 = donnees['Vu'][2]
     
     # 2. Création de la figure avec 3 sous-graphiques alignés
     fig, axs = plt.subplots(1, 3, figsize=(16, 5))
@@ -339,7 +363,7 @@ def tracer_triangles_vitesses():
     # --- STATION 1 : Entrée Stator ---
     # Vecteurs
     tracer_vecteur(axs[0], 0, Va1, 0, -Va1, 'black', 'Va1') # Ajout de Va1
-    tracer_vecteur(axs[0], 0, Va1, Vu1, -Va1, 'blue', 'V1')
+    tracer_vecteur(axs[0], 0, Va1, Va1*np.tan(a1), -Va1, 'blue', 'V1')
     axs[0].set_title("Station 1 (Entrée Stator)")
     
     # --- STATION 2 : Sortie Stator / Entrée Rotor ---
@@ -359,7 +383,7 @@ def tracer_triangles_vitesses():
     axs[2].set_title("Station 3 (Sortie Rotor)")
 
     # 3. Mise en forme et uniformisation des axes
-    all_x = [0, U2, U3, Vu1, Vu2, Vu3, Vu2-U2, Vu3-U3]
+    all_x = [0, U2, U3, Vu2, Vu3, Vu2-U2, Vu3-U3]
     all_y = [0, Va1, Va2, Va3]
     
     x_min, x_max = min(all_x) - 50, max(all_x) + 50
@@ -381,9 +405,8 @@ def etape_2(donnees_hpt):
     print(f"\nÉTAPES 2.a, b, c : Répartition des triangles de vitesse")
 
     # Valeurs lues depuis les dictionnaires globaux 'donnees' et 'contraintes'
-    Vu_1 = donnees['Vu'][1]
-    Vu_2 = donnees['Vu'][2]
-    Vu_3 = donnees['Vu'][3]
+    Vu_2 = donnees['Vu'][1]
+    Vu_3 = donnees['Vu'][2]
     rm_1 = donnees['r_m'][1]
     rm_2 = donnees['r_m'][2]
     rm_3 = donnees['r_m'][3]
@@ -421,7 +444,7 @@ def etape_2(donnees_hpt):
     n = -1
 
     # Trouver les constantes à chaque station
-    stat_1 = [Vu_1, rm_1, Pm_1, alpham_1, pm_1, rr_1, rt_1, Va_1, To_1]
+    stat_1 = [0, rm_1, Pm_1, alpham_1, pm_1, rr_1, rt_1, Va_1, To_1]
     stat_2 = [Vu_2, rm_2, Pm_2, alpham_2, pm_2, rr_2, rt_2, Va_2, To_2]
     stat_3 = [Vu_3, rm_3, Pm_3, alpham_3, pm_3, rr_3, rt_3, Va_3, To_3]
     
@@ -613,7 +636,7 @@ def etape_4(donnees_hpt):
     tmax_s = 0.2 * c_s    # Épaisseur max ailette stator
     tmax_r = 0.2 * c_r    # Épaisseur max ailette rotor
     k_s = 0                # Jeu radial ailette stator
-    k_r = 0.0003         # Jeu radial ailette rotor
+    k_r = 0.0003735         # Jeu radial ailette rotor
 
     # Extraction des variables du dictionnaire 'donnees_hpt'
     y = donnees_hpt['gamma']
@@ -731,13 +754,6 @@ def etape_4(donnees_hpt):
         f_re_r = 1
     else:
         f_re_r = (Re_r / 1000000)**-0.2
-    
-    print("\n=== RÉCAPITULATIF DES COEFFICIENTS (ROTOR) ===")
-    print(f"Perte de profil (Yp_moderne_r)   : {Yp_moderne_r:.5f}")
-    print(f"Facteur de Reynolds (f_re_r)     : {f_re_r:.5f}")
-    print(f"Perte secondaire (Ys_moderne_r)  : {Ys_moderne_r:.5f}")
-    print(f"Perte bord de fuite (Ytet_r)     : {Ytet_r:.5f}")
-    print(f"Perte de jeu radial (Ytc_r)      : {Ytc_r:.5f}")
 
     Ytot_r = Yp_moderne_r * f_re_r + Ys_moderne_r + Ytet_r + Ytc_r  
 
@@ -798,3 +814,5 @@ def etape_4(donnees_hpt):
         print(f"Contrainte admissible : {sigma_c:.2f} KSI")
         print(f"Coefficient K5 requis : {k5_req:.2f}")
         print(f"Ratio Ar/At nécessaire : {Ar_At:.2f}")
+
+
