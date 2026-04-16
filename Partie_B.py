@@ -91,6 +91,8 @@ def etape_1(donnees_hpt, tolerance=1e-6):
 
     # Rendement visé
     eta_hpt = donnees_hpt['eta_iso']
+    dh0s = dh0 / eta_hpt
+    pertes_totale = dh0s - dh0
 
 
     # Thermodynamique de la station 2 (fixée par la réaction)
@@ -231,6 +233,7 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     print(f"Coefficient de pertes : Stator (Y_N) = {Y_N:.4f}, Rotor (Y_R) = {Y_R:.4f}")
     print(f"Rendement de l'étage: {rendement:.2f}")
     print(f"Va2 : {Va2:.0f} m/s")
+    print(f"Pertes totales étage : {pertes_totale:.0f} J")
 
 def plot_geometrie_turbine():
     # Extraction des données du dictionnaire
