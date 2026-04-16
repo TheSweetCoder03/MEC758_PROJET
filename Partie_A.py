@@ -162,6 +162,10 @@ def Station_4 (po3, to3, s3):
     cp4 = cte_cc["cpcc"]
     cp3 = cte_comp["cpc"]
     y = cte_cc["ycc"]
+    mp = cte_comp["mpt"]
+    pap = cte_comp["pap"]
+    cpt = cte_turb["cpt"]
+    cpc = cte_comp["cpc"]
 
     to4 = (f*qr*ncc+cp3*to3)/(cp4*(1+f))
     po4 = po3 * (1 - deltapcc)
@@ -170,11 +174,15 @@ def Station_4 (po3, to3, s3):
 
     s4 = s3 + cp4 * np.log(to4/to3) - r * np.log(po4/po3)
 
-    station[4] = {"Po": po4, "To": to4, "s": s4}
+    #Calcul de la température To4 une fois que l'aire de refroidissement est mixée
+    mpt = mp * (1 - pap) * (1 + f) + mp * pap
+    to4u = ((mp * (1 - pap) * (1 + f)) * to4 * cpt + mp * pap * to3 * cpc)/ (mpt * cpt)
 
-    return po4, to4, s4
+    station[4] = {"Po": po4, "To": to4u, "s": s4}
 
-def Station_5 (po4, to4, whpc, s4, to3):
+    return po4, to4u, s4, mpt
+
+def Station_5 (po4, to4u, whpc, s4, mpt):
     # Station 5 : Sortie de la turbine haute pression
     nthp = cte_turb["nthp"]
     y = cte_turb["yt"]
@@ -184,9 +192,7 @@ def Station_5 (po4, to4, whpc, s4, to3):
     pap = cte_comp["pap"]
     cpc = cte_comp["cpc"]
     perte_it = cte_turb["deltapit"]
-
-    mpt = mp * (1 - pap) * (1 + f) + mp * pap
-    to4u = ((mp * (1 - pap) * (1 + f)) * to4 * cpt + mp * pap * to3 * cpc)/ (mpt * cpt)
+    
 
     po4p = (1 - perte_it) * po4
 
@@ -200,7 +206,7 @@ def Station_5 (po4, to4, whpc, s4, to3):
 
     s5 = s4 + cpt * np.log(to5/to4u) - r * np.log(po5/po4p)
 
-    station[5] = {"Po": po5, "To": to5, "w": whpt, "s": s5, "mpt": mpt, "To4": to4u}
+    station[5] = {"Po": po5, "To": to5, "w": whpt, "s": s5, "mpt": mpt}
 
     return po5, to5, whpt, s5, mpt
 
@@ -312,15 +318,15 @@ def calcul():
     po1, to1, s1 = Station_1()
     po2, to2, wlpc, s2 = Station_2(po1, to1, s1)
     po3, to3, whpc, s3 = Station_3(po2, to2, s2)
-    po4, to4, s4 = Station_4(po3, to3, s3)
-    po5, to5, whpt, s5, mpt = Station_5(po4, to4, whpc, s4, to3)
+    po4, to4u, s4, mpt = Station_4(po3, to3, s3)
+    po5, to5, whpt, s5, mpt = Station_5(po4, to4u, whpc, s4, mpt)
     po6, to6, wlpt, s6 = Station_6(po5, to5, wlpc, s5, mpt)
     p7, t7, wpt, hp, s7, sfc = Station_7(po6, to6, s6, mpt)
 
 def export_donnees_hpt():
     mpt_calc = station[5]['mpt']
     donnees_hpt = {
-        'T04': station[4]['To4'],                  
+        'T04': station[4]['To'],                  
         'P04': station[4]['Po'],                  
         'T05': station[5]['To'],                  
         'P05': station[5]['Po'],                  
