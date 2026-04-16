@@ -67,7 +67,7 @@ def Station_1 ():
     return po1, to1, s1
 
 def Station_2 (po1, to1, s1):
-    # Station 2 : Sortie du compresseur basse pression
+    # Station 2 : Entrée de l'air dans le compresseur haute pression
     rpbp = cte_comp["rpbp"]
     ncbp = cte_comp["ncbp"]
     y = cte_comp["yc"]
@@ -109,7 +109,7 @@ def Station_2 (po1, to1, s1):
     return po2, to2, wlpc, s2
 
 def Station_3 (po2, to2, s2):
-    # Station 3 : Sortie du compresseur haute pression
+    # Station 3 : Entrée de l'air dans la chambre à combustion
     rphp = cte_comp["rphp"]
     nchp = cte_comp["nchp"]
     y = cte_comp["yc"]
@@ -154,7 +154,7 @@ def Station_3 (po2, to2, s2):
     return po3, to3, whpc, s3
 
 def Station_4 (po3, to3, s3):
-    # Station 4 : Sortie de la chambre de combustion
+    # Station 4 : Entrée de l'air dans la turbine haute pression
     f = cte_cc["f"]
     qr = cte_cc["qr"]
     ncc = cte_cc["ncc"]
@@ -183,7 +183,7 @@ def Station_4 (po3, to3, s3):
     return po4, to4u, s4, mpt
 
 def Station_5 (po4, to4u, whpc, s4, mpt):
-    # Station 5 : Sortie de la turbine haute pression
+    # Station 5 : Entrée de l'air dans la turbine basse pression
     nthp = cte_turb["nthp"]
     y = cte_turb["yt"]
     cpt = cte_turb["cpt"]
@@ -211,7 +211,7 @@ def Station_5 (po4, to4u, whpc, s4, mpt):
     return po5, to5, whpt, s5, mpt
 
 def Station_6 (po5, to5, wlpc, s5, mpt):
-    # Station 6 : Sortie de la turbine basse pression
+    # Station 6 : Entrée de l'air dans la power turbine
     ntbp = cte_turb["ntbp"]
     y = cte_turb["yt"]
     cpt = cte_turb["cpt"]
