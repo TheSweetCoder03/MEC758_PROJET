@@ -73,7 +73,6 @@ def Station_2 (po1, to1, s1):
     y = cte_comp["yc"]
     mp = cte_comp["mpt"]
     cp = cte_comp["cpc"]
-    haller = cte_comp["haller"]
     Ur = cte_comp["Ur"]
     rr = cte_comp["rr"] # Ratio des rayons des ailettes du compresseur
     rpmlpc = cte_comp["rpmlpc"] * (2 * np.pi / 60) #rpm du compresseur basse pression converti en rad/s
@@ -118,13 +117,13 @@ def Station_3 (po2, to2, s2):
     Ur = cte_comp["Ur"]
     rr = cte_comp["rr"] # Ratio des rayons des ailettes du compresseur
     alpha1 = cte_comp["alpha1"]
-    haller = cte_comp["haller"]
+    pap = cte_comp["pap"]
 
     po3 = po2 * rphp
     to3s = to2 * (rphp)**((y-1)/y)
     to3 = to2 + (to3s - to2) / nchp
 
-    whpc = mp * cp * (to3 - to2)
+    whpc = mp * (1 - pap) * cp * (to3 - to2)
 
     r = cp * ((y-1)/y)
 
