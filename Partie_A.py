@@ -200,7 +200,7 @@ def Station_5 (po4, to4, whpc, s4, to3):
 
     s5 = s4 + cpt * np.log(to5/to4u) - r * np.log(po5/po4p)
 
-    station[5] = {"Po": po5, "To": to5, "w": whpt, "s": s5, "mpt": mpt}
+    station[5] = {"Po": po5, "To": to5, "w": whpt, "s": s5, "mpt": mpt, "To4": to4u}
 
     return po5, to5, whpt, s5, mpt
 
@@ -320,7 +320,7 @@ def calcul():
 def export_donnees_hpt():
     mpt_calc = station[5]['mpt']
     donnees_hpt = {
-        'T04': station[4]['To'],                  
+        'T04': station[4]['To4'],                  
         'P04': station[4]['Po'],                  
         'T05': station[5]['To'],                  
         'P05': station[5]['Po'],                  
