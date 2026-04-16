@@ -6,7 +6,7 @@ def main():
     print("EXÉCUTION DE LA PARTIE A : CYCLE THERMODYNAMIQUE")
     Partie_A.calcul()
     Partie_A.print_station()
-    #Partie_A.plot_cycle()
+    Partie_A.plot_cycle()
 
     print("\nEXÉCUTION DE LA PARTIE B : CONCEPTION HPT")
     donnees_hpt = Partie_A.export_donnees_hpt()
@@ -15,7 +15,7 @@ def main():
     #Partie_B.tracer_limites_rpm()
     #Partie_B.tracer_triangles_vitesses()
     Partie_B.etape_2(donnees_hpt)
-    #Partie_B.etape_2_graphique()
+    Partie_B.etape_2_graphique()
     Partie_B.etape_3(donnees_hpt)
     Partie_B.etape_4(donnees_hpt)
 
