@@ -102,7 +102,7 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     T02 = T01
 
     # Station 3
-    Vru3 = Vu3 - U3
+    Vru3 = U3 - Vu3
     alpha_rel3 = np.arctan(Vru3 / Va3)
     Vr3 = np.sqrt(Va3**2 + Vru3**2)
     Mr3 = Vr3 / np.sqrt(gamma * R_gaz * T3)
