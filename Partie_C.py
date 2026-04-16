@@ -28,13 +28,14 @@ def partie_c():
     U2_hc = omega_hc * r_m2
     U3_hc = omega_hc * r_m3
 
+    a1 = Partie_B.donnees['alpha'][1]
+
     # --- Vitesses absolues inchangées (stator fixe, même débit, même thermo) ---
     Va1 = Partie_B.donnees['Va'][1]
     Va2 = Partie_B.donnees['Va'][2]
     Va3 = Partie_B.donnees['Va'][3]
-    Vu1 = Partie_B.donnees['Vu'][1]
-    Vu2 = Partie_B.donnees['Vu'][2]
-    Vu3 = Partie_B.donnees['Vu'][3]
+    Vu2 = Partie_B.donnees['Vu'][1]
+    Vu3 = Partie_B.donnees['Vu'][2]
 
     # --- Nouveaux triangles relatifs ---
     Vru2_hc = Vu2 - U2_hc
@@ -58,17 +59,19 @@ def partie_c():
     print(f"Incidence sur le rotor (i)       : {incidence:.2f}°")
 
     # --- Sauvegarde ---
+    donnees_hc['alpha']        = {1: a1}
     donnees_hc['rpm']          = rpm_hc
     donnees_hc['omega']        = omega_hc
     donnees_hc['U']            = {1: U1_hc, 2: U2_hc, 3: U3_hc}
     donnees_hc['Va']           = {1: Va1,   2: Va2,   3: Va3}
-    donnees_hc['Vu']           = {1: Vu1,   2: Vu2,   3: Vu3}
+    donnees_hc['Vu']           = {1: Vu2,   2: Vu3}
     donnees_hc['Vru']          = {2: Vru2_hc, 3: Vru3_hc}
     donnees_hc['Vr']           = {2: Vr2_hc,  3: Vr3_hc}
     donnees_hc['alpha_relatif']= {2: alpha_rel2_hc, 3: alpha_rel3_hc}
     donnees_hc['incidence']    = incidence
 
 def tracer_triangles_vitesses():
+    a1 = donnees_hc['alpha'][1]
     # 1. Extraction des variables du dictionnaire 'vitesses' (qui doit être global ici)
     U2 = donnees_hc['U'][1]
     U3 = donnees_hc['U'][2]
@@ -77,9 +80,8 @@ def tracer_triangles_vitesses():
     Va2 = donnees_hc['Va'][2]
     Va3 = donnees_hc['Va'][3]
 
-    Vu1 = donnees_hc['Vu'][1]
-    Vu2 = donnees_hc['Vu'][2]
-    Vu3 = donnees_hc['Vu'][3]
+    Vu2 = donnees_hc['Vu'][1]
+    Vu3 = donnees_hc['Vu'][2]
     
     # 2. Création de la figure avec 3 sous-graphiques alignés
     fig, axs = plt.subplots(1, 3, figsize=(16, 5))
@@ -94,7 +96,7 @@ def tracer_triangles_vitesses():
     # --- STATION 1 : Entrée Stator ---
     # Vecteurs
     tracer_vecteur(axs[0], 0, Va1, 0, -Va1, 'black', 'Va1') # Ajout de Va1
-    tracer_vecteur(axs[0], 0, Va1, Vu1, -Va1, 'blue', 'V1')
+    tracer_vecteur(axs[0], 0, Va1, Va1*np.tan(a1), -Va1, 'blue', 'V1')
     axs[0].set_title("Station 1 (Entrée Stator)")
     
     # --- STATION 2 : Sortie Stator / Entrée Rotor ---
@@ -114,7 +116,7 @@ def tracer_triangles_vitesses():
     axs[2].set_title("Station 3 (Sortie Rotor)")
 
     # 3. Mise en forme et uniformisation des axes
-    all_x = [0, U2, U3, Vu1, Vu2, Vu3, Vu2-U2, Vu3-U3]
+    all_x = [0, U2, U3, Vu2, Vu3, Vu2-U2, Vu3-U3]
     all_y = [0, Va1, Va2, Va3]
     
     x_min, x_max = min(all_x) - 50, max(all_x) + 50
