@@ -34,9 +34,8 @@ resultats_radiaux = {}
 def deg2rad(angle):
     return angle * np.pi / 180.0
 
-def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
+def etape_1(donnees_hpt, tolerance=1e-6):
     print(f"\nÉTAPES 1: Géométrie et Triangles")
-    print(f"Stratégie de veine : {'Racine Constante' if racine_constante else 'Bout (Tip) Constant'}")
     
     # Constantes de Sutherland (Air/Gaz)
     mu0 = 1.716e-5
@@ -86,14 +85,9 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
     Vu1 = V1 * np.sin(deg2rad(contraintes['alpha_1']))
 
     A1 = m_dot / (rho1 * Va1)
-    if racine_constante:
-        r_root1 = r_root3
-        r_tip1 = np.sqrt((A1 / np.pi) + r_root1**2)
-    else:
-        r_tip1 = r_tip3
-        r_root1 = np.sqrt(r_tip1**2 - (A1 / np.pi))  
+    r_tip1 = r_tip3
+    r_root1 = np.sqrt(r_tip1**2 - (A1 / np.pi))  
     r_m1 = (r_root1 + r_tip1) / 2.0
-    U1 = omega * r_m1
 
     # Rendement visé
     eta_hpt = donnees_hpt['eta_iso']
@@ -204,7 +198,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
 
     donnees['Rpm'] = rpm
     donnees['omega'] = omega
-    donnees['U'] = {1: U1, 2: U2, 3: U3}
+    donnees['U'] = {1: U2, 2: U3}
     donnees['Va'] = {1: Va1, 2: Va2, 3: Va3}
     donnees['Vu'] = {1: Vu1, 2: Vu2, 3: Vu3}
     donnees['Vr'] = {2: Vr2, 3: Vr3}
@@ -307,10 +301,8 @@ def tracer_limites_rpm():
     plt.show()
 
 def tracer_triangles_vitesses():
-    # 1. Extraction des variables du dictionnaire 'vitesses' (qui doit être global ici)
-    U1 = donnees['U'][1]
-    U2 = donnees['U'][2]
-    U3 = donnees['U'][3]
+    U2 = donnees['U'][1]
+    U3 = donnees['U'][2]
     
     Va1 = donnees['Va'][1]
     Va2 = donnees['Va'][2]
@@ -334,7 +326,6 @@ def tracer_triangles_vitesses():
     # Vecteurs
     tracer_vecteur(axs[0], 0, Va1, 0, -Va1, 'black', 'Va1') # Ajout de Va1
     tracer_vecteur(axs[0], 0, Va1, Vu1, -Va1, 'blue', 'V1')
-    tracer_vecteur(axs[0], 0, 0, U1, 0, 'green', 'U1 (Ref)', decalage_y=-10)
     axs[0].set_title("Station 1 (Entrée Stator)")
     
     # --- STATION 2 : Sortie Stator / Entrée Rotor ---
@@ -354,7 +345,7 @@ def tracer_triangles_vitesses():
     axs[2].set_title("Station 3 (Sortie Rotor)")
 
     # 3. Mise en forme et uniformisation des axes
-    all_x = [0, U1, U2, U3, Vu1, Vu2, Vu3, Vu2-U2, Vu3-U3]
+    all_x = [0, U2, U3, Vu1, Vu2, Vu3, Vu2-U2, Vu3-U3]
     all_y = [0, Va1, Va2, Va3]
     
     x_min, x_max = min(all_x) - 50, max(all_x) + 50
