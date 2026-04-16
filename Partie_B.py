@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.optimize import minimize_scalar
 from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -109,45 +110,54 @@ def etape_1(donnees_hpt, tolerance=1e-6):
 
     A2 = A3
 
-    def residual(Va2_guess):
-        #Cette fonction sert à calculer le Va2 nécessaire pour avoir un rendement de 0.88
+    def objectif_Va2(Va2):
 
-        Va2 = Va2_guess[0]
-
-        #Limite le solveur à ce qu'il peut explorer, sinon y peut aller ou on veut pas
-        if Va2 <= 0 or Va2 >= V2:
-            return [1e10]
-
-        
+        # 1. Calculs thermodynamiques
         rho2 = m_dot / (Va2 * A2)
         P2 = rho2 * R_gaz * T2
         M2 = V2 / np.sqrt(gamma * R_gaz * T2)
-        P02 = P2 * (1 + (gamma - 1) * M2**2 /2)**(gamma / (gamma -1))
+        P02 = P2 * (1 + (gamma - 1) * M2**2 / 2)**(gamma / (gamma - 1))
         Y_N = (P01 - P02) / (P02 - P2)
 
-        Vu2 = np.sqrt(V2**2 - Va2**2)
+        # Protection : Empêche la racine carrée d'un nombre négatif
+        Vu2 = np.sqrt(max(0, V2**2 - Va2**2)) 
+        
         U2 = (dh0 + U3 * Vu3) / Vu2
         Vru2 = Vu2 - U2
         Vr2 = np.sqrt(Va2**2 + Vru2**2)
         Mr2 = Vr2 / np.sqrt(gamma * R_gaz * T2)
-        P0r2 = P2 * (1 + ((gamma -1)/2) * Mr2**2)**(gamma / (gamma -1))
+        P0r2 = P2 * (1 + ((gamma - 1)/2) * Mr2**2)**(gamma / (gamma - 1))
         Y_R = (P0r2 - P0r3) / (P0r3 - P3)
 
+        # 2. PÉNALITÉ PHYSIQUE : Les pertes ne peuvent pas être négatives
+        if Y_N < 0.05 or Y_R < 0.05:
+            # On retourne une erreur massive proportionnelle à l'infraction
+            # Cela crée un "entonnoir" qui ramène le solveur vers la physique réelle
+            return 1e4 + abs(Y_N)*1000 + abs(Y_R)*1000 
+
+        # 3. Calcul du rendement
         lambda_N = Y_N / (1 + 0.5 * gamma * M2**2)
         lambda_R = Y_R / (1 + 0.5 * gamma * Mr3**2)
         rendement = 1 / (1 + (lambda_N * V2**2 + lambda_R * Vr3**2) / (2 * cp * (T01 - T03)))
 
-        return [rendement - eta_hpt]
+        # 5. On retourne l'écart au carré (Moindres Carrés)
+        return (rendement - eta_hpt)**2
 
-    Va2_init = 200 #On pose une valeur de départ pour le solveur
-    Va2 = fsolve(residual, [Va2_init], xtol=tolerance)[0]
+    # Lancement du solveur scalaire avec méthode 'bounded'
+    res = minimize_scalar(
+        objectif_Va2, 
+        bounds=(50, 300), 
+        method='bounded',
+        options={'xatol': tolerance}
+    )
+    
+    # Vérification de la convergence
+    if not res.success:
+        raise ValueError(f"[ERREUR] minimize_scalar n'a pas convergé : {res.message}")
 
-    #On ajoute une sécurité qui vérifie que le solveur converge
-    Va2_sol, _, ier, msg = fsolve(residual, [Va2_init], xtol=tolerance, full_output=True)
-    Va2 = Va2_sol[0]
-    if ier != 1:
-        raise ValueError(f"[ERREUR] fsolve n'a pas convergé : {msg}")
-
+    Va2 = res.x
+    
+    # --- Reprise des calculs de vérification avec la valeur validée ---
     rho2 = m_dot / (Va2 * A2)
     P2 = rho2 * R_gaz * T2
     P02 = P2 * (1 + (gamma - 1) * M2**2 /2)**(gamma / (gamma -1))
@@ -538,7 +548,6 @@ def etape_3(donnees_hpt):
     print(f"Rotor  | Corde axiale: {car:.4f} m | Pas: {pas_r:.4f} m | Aubes: {nr:.1f} -> {int(np.ceil(nr))} aubes")
 
 def etape_4(donnees_hpt):
-    print(f"\nÉTAPES 4: Coefficient de perte")
     # Extraction des variables du dictionnaire 'donnees'
     beta_1 = donnees['alpha'][1] 
     beta_2 = donnees['alpha_relatif'][2]
@@ -595,10 +604,10 @@ def etape_4(donnees_hpt):
 
     # Paramètres de conception
     nbre_seal = 3 # Nombre de seal au bout ailette
-    tmax_s = 0.15 * c_s    # Épaisseur max ailette stator
-    tmax_r = 0.15 * c_r    # Épaisseur max ailette rotor
+    tmax_s = 0.2 * c_s    # Épaisseur max ailette stator
+    tmax_r = 0.2 * c_r    # Épaisseur max ailette rotor
     k_s = 0                # Jeu radial ailette stator
-    k_r = 0.0004         # Jeu radial ailette rotor
+    k_r = 0.001         # Jeu radial ailette rotor
 
     # Extraction des variables du dictionnaire 'donnees_hpt'
     y = donnees_hpt['gamma']
@@ -612,11 +621,12 @@ def etape_4(donnees_hpt):
     # ====================================
     
     # Extractions graphiques pour le stator
-    Yp_1_s = Tableau.extraire_donnee_graphique(x=(pas_s/c_s), y=np.degrees(alpha_2), figure=1)
-    Yp_2_s = Tableau.extraire_donnee_graphique(x=(pas_s/c_s), y=np.degrees(alpha_2), figure=2)
+    Yp_1_s = Tableau.extraire_donnee_graphique(x=(pas_s/c_s), y=abs(np.degrees(alpha_2)), figure=1)
+    Yp_2_s = Tableau.extraire_donnee_graphique(x=(pas_s/c_s), y=abs(np.degrees(alpha_2)), figure=2)
 
     # Perte du profil (Yp) -
-    Yp_AMDC_s = (Yp_1_s + abs(beta_1 / alpha_2) * (beta_1 / alpha_2) * (Yp_2_s - Yp_1_s)) * ((tmax_s / c_s) / 0.2)**(beta_1 / alpha_2)
+    ratio_s = abs(alpha_1 / alpha_2)
+    Yp_AMDC_s = (Yp_1_s + (ratio_s**2) * (Yp_2_s - Yp_1_s)) * ((tmax_s / c_s) / 0.2)**ratio_s
 
     k1_s = 1 - 1.25 * abs(M2 - 0.2) if M2 > 0.2 else 1
     k2_s = abs(M1 / M2)**2
@@ -666,11 +676,12 @@ def etape_4(donnees_hpt):
     # ===================================
     
     # Extractions graphiques pour le rotor
-    Yp_1_r = Tableau.extraire_donnee_graphique(x=(pas_r/c_r), y=np.degrees(beta_3), figure=1)
-    Yp_2_r = Tableau.extraire_donnee_graphique(x=(pas_r/c_r), y=np.degrees(beta_3), figure=2)
+    Yp_1_r = Tableau.extraire_donnee_graphique(x=(pas_r/c_r), y=abs(np.degrees(beta_3)), figure=1)
+    Yp_2_r = Tableau.extraire_donnee_graphique(x=(pas_r/c_r), y=abs(np.degrees(beta_3)), figure=2)
 
     # Perte du profil (Yp)
-    Yp_AMDC_r = (Yp_1_r + abs(beta_2 / beta_3) * (beta_2 / beta_3) * (Yp_2_r - Yp_1_r)) * ((tmax_r / c_r) / 0.2)**(beta_2 / beta_3)
+    ratio_r = abs(beta_2 / beta_3)
+    Yp_AMDC_r = (Yp_1_r + (ratio_r**2) * (Yp_2_r - Yp_1_r)) * ((tmax_r / c_r) / 0.2)**ratio_r
 
     k1_r = 1 - 1.25 * abs(Mr3 - 0.2) if Mr3 > 0.2 else 1
     k2_r = abs(Mr2 / Mr3)**2
@@ -690,7 +701,7 @@ def etape_4(donnees_hpt):
     # Perte secondaire (Ys) 
     f_ar_r = (1 - 0.25 * np.sqrt(2 - (h_r / c_r))) / (h_r / c_r) if (h_r / c_r) <= 2 else 1 / (h_r / c_r)
 
-    beta_m_r = np.arctan((1 / 2) * (np.tan(beta_2) - np.tan(beta_3)))
+    beta_m_r = np.arctan(0.5 * (np.tan(beta_2) + np.tan(beta_3)))
     Cl_sc_r = 2 * (np.tan(abs(beta_2)) + np.tan(abs(beta_3))) * np.cos(beta_m_r)
 
     Ys_AMDC_r = 0.0334 * f_ar_r * (np.cos(beta_3) / np.cos(beta_2)) * Cl_sc_r**2 * (np.cos(beta_3))**2 / (np.cos(beta_m_r))**3
@@ -718,8 +729,6 @@ def etape_4(donnees_hpt):
         f_re_r = (Re_r / 1000000)**-0.2
 
     Ytot_r = Yp_moderne_r * f_re_r + Ys_moderne_r + Ytet_r + Ytc_r  
-
-    print(f"Coefficient de pertes : Stator (Y_N) = {Ytot_s:.4f}, Rotor (Y_R) = {Ytot_r:.4f}")
 
     # ==========================
     # 4.b : Trouver le jeu rotor 

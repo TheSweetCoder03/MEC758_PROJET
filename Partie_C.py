@@ -49,9 +49,9 @@ def partie_c():
     alpha_rel2_design = Partie_B.donnees['alpha_relatif'][2]
     incidence = np.degrees(alpha_rel2_hc) - np.degrees(alpha_rel2_design)
 
-    print(f"\nU2 design        : {Partie_B.donnees['U'][2]:.2f} m/s")
+    print(f"\nU2 design        : {Partie_B.donnees['U'][1]:.2f} m/s")
     print(f"U2 hors-concept. : {U2_hc:.2f} m/s")
-    print(f"U3 design        : {Partie_B.donnees['U'][3]:.2f} m/s")
+    print(f"U3 design        : {Partie_B.donnees['U'][2]:.2f} m/s")
     print(f"U3 hors-concept. : {U3_hc:.2f} m/s")
     print(f"\nAngle relatif α_rel2 design      : {np.degrees(alpha_rel2_design):.2f}°")
     print(f"Angle relatif α_rel2 hors-concept: {np.degrees(alpha_rel2_hc):.2f}°")
@@ -70,9 +70,8 @@ def partie_c():
 
 def tracer_triangles_vitesses():
     # 1. Extraction des variables du dictionnaire 'vitesses' (qui doit être global ici)
-    U1 = donnees_hc['U'][1]
-    U2 = donnees_hc['U'][2]
-    U3 = donnees_hc['U'][3]
+    U2 = donnees_hc['U'][1]
+    U3 = donnees_hc['U'][2]
     
     Va1 = donnees_hc['Va'][1]
     Va2 = donnees_hc['Va'][2]
@@ -96,7 +95,6 @@ def tracer_triangles_vitesses():
     # Vecteurs
     tracer_vecteur(axs[0], 0, Va1, 0, -Va1, 'black', 'Va1') # Ajout de Va1
     tracer_vecteur(axs[0], 0, Va1, Vu1, -Va1, 'blue', 'V1')
-    tracer_vecteur(axs[0], 0, 0, U1, 0, 'green', 'U1 (Ref)', decalage_y=-10)
     axs[0].set_title("Station 1 (Entrée Stator)")
     
     # --- STATION 2 : Sortie Stator / Entrée Rotor ---
@@ -116,7 +114,7 @@ def tracer_triangles_vitesses():
     axs[2].set_title("Station 3 (Sortie Rotor)")
 
     # 3. Mise en forme et uniformisation des axes
-    all_x = [0, U1, U2, U3, Vu1, Vu2, Vu3, Vu2-U2, Vu3-U3]
+    all_x = [0, U2, U3, Vu1, Vu2, Vu3, Vu2-U2, Vu3-U3]
     all_y = [0, Va1, Va2, Va3]
     
     x_min, x_max = min(all_x) - 50, max(all_x) + 50
