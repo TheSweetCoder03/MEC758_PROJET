@@ -79,15 +79,14 @@ def Station_2 (po1, to1, s1):
     rpmlpc = cte_comp["rpmlpc"] * (2 * np.pi / 60) #rpm du compresseur basse pression converti en rad/s
     alpha1 = cte_comp["alpha1"] # Angle d'entrée de l'air dans le compresseur basse pression en degrés
     altitude = cte_amb["altitude"]
-    rho = 352.995*(((1-0.0000225577*altitude)**5.25516)/(288.15-0.0065*altitude)) # Masse volumique de l'air à l'altitude selon Marcel Délèze -> https://www.deleze.name/marcel/sec2/applmaths/pression-altitude/masse_volumique.pdf
+    r = cp * ((y-1)/y)
+    rho = po1 / (r * to1)
 
     po2 = po1 * rpbp
     to2s = to1 * (rpbp)**((y-1)/y)
     to2 = to1 + (to2s - to1) / ncbp
 
     wlpc = mp * cp * (to2 - to1)
-
-    r = cp * ((y-1)/y)
 
     s2 = s1 + cp * np.log(to2/to1) - r * np.log(po2/po1)
 
