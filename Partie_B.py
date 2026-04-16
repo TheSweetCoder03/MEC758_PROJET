@@ -91,9 +91,9 @@ def etape_1(donnees_hpt, tolerance=1e-6):
 
     # Rendement visé
     eta_hpt = donnees_hpt['eta_iso']
+    #Calcul des pertes totales de la HPT
     dh0s = dh0 / eta_hpt
     pertes_totale = dh0s - dh0
-
 
     # Thermodynamique de la station 2 (fixée par la réaction)
     dh = dh0 - (V1**2 - V3**2) / 2 
