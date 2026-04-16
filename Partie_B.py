@@ -1,6 +1,5 @@
 import numpy as np
-from scipy.optimize import minimize_scalar
-from scipy.optimize import fsolve
+from scipy.optimize import fsolve, minimize_scalar
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import Tableau
@@ -138,6 +137,11 @@ def etape_1(donnees_hpt, tolerance=1e-6):
         # 3. Calcul du rendement
         lambda_N = Y_N / (1 + 0.5 * gamma * M2**2)
         lambda_R = Y_R / (1 + 0.5 * gamma * Mr3**2)
+
+        # Les coefficients de perte doivent être strictement positifs
+        if lambda_N < 0 or lambda_R < 0:
+            return [1e10]
+
         rendement = 1 / (1 + (lambda_N * V2**2 + lambda_R * Vr3**2) / (2 * cp * (T01 - T03)))
 
         # 5. On retourne l'écart au carré (Moindres Carrés)

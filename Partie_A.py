@@ -67,27 +67,25 @@ def Station_1 ():
     return po1, to1, s1
 
 def Station_2 (po1, to1, s1):
-    # Station 2 : Sortie du compresseur basse pression
+    # Station 2 : Entrée de l'air dans le compresseur haute pression
     rpbp = cte_comp["rpbp"]
     ncbp = cte_comp["ncbp"]
     y = cte_comp["yc"]
     mp = cte_comp["mpt"]
     cp = cte_comp["cpc"]
-    haller = cte_comp["haller"]
     Ur = cte_comp["Ur"]
     rr = cte_comp["rr"] # Ratio des rayons des ailettes du compresseur
     rpmlpc = cte_comp["rpmlpc"] * (2 * np.pi / 60) #rpm du compresseur basse pression converti en rad/s
     alpha1 = cte_comp["alpha1"] # Angle d'entrée de l'air dans le compresseur basse pression en degrés
     altitude = cte_amb["altitude"]
-    rho = 352.995*(((1-0.0000225577*altitude)**5.25516)/(288.15-0.0065*altitude)) # Masse volumique de l'air à l'altitude selon Marcel Délèze -> https://www.deleze.name/marcel/sec2/applmaths/pression-altitude/masse_volumique.pdf
+    r = cp * ((y-1)/y)
+    rho = po1 / (r * to1)
 
     po2 = po1 * rpbp
     to2s = to1 * (rpbp)**((y-1)/y)
     to2 = to1 + (to2s - to1) / ncbp
 
     wlpc = mp * cp * (to2 - to1)
-
-    r = cp * ((y-1)/y)
 
     s2 = s1 + cp * np.log(to2/to1) - r * np.log(po2/po1)
 
@@ -109,7 +107,7 @@ def Station_2 (po1, to1, s1):
     return po2, to2, wlpc, s2
 
 def Station_3 (po2, to2, s2):
-    # Station 3 : Sortie du compresseur haute pression
+    # Station 3 : Entrée de l'air dans la chambre à combustion
     rphp = cte_comp["rphp"]
     nchp = cte_comp["nchp"]
     y = cte_comp["yc"]
@@ -119,7 +117,7 @@ def Station_3 (po2, to2, s2):
     Ur = cte_comp["Ur"]
     rr = cte_comp["rr"] # Ratio des rayons des ailettes du compresseur
     alpha1 = cte_comp["alpha1"]
-    haller = cte_comp["haller"]
+    pap = cte_comp["pap"]
 
     po3 = po2 * rphp
     to3s = to2 * (rphp)**((y-1)/y)
@@ -154,7 +152,7 @@ def Station_3 (po2, to2, s2):
     return po3, to3, whpc, s3
 
 def Station_4 (po3, to3, s3):
-    # Station 4 : Sortie de la chambre de combustion
+    # Station 4 : Entrée de l'air dans la turbine haute pression
     f = cte_cc["f"]
     qr = cte_cc["qr"]
     ncc = cte_cc["ncc"]
@@ -162,6 +160,10 @@ def Station_4 (po3, to3, s3):
     cp4 = cte_cc["cpcc"]
     cp3 = cte_comp["cpc"]
     y = cte_cc["ycc"]
+    mp = cte_comp["mpt"]
+    pap = cte_comp["pap"]
+    cpt = cte_turb["cpt"]
+    cpc = cte_comp["cpc"]
 
     to4 = (f*qr*ncc+cp3*to3)/(cp4*(1+f))
     po4 = po3 * (1 - deltapcc)
@@ -170,42 +172,36 @@ def Station_4 (po3, to3, s3):
 
     s4 = s3 + cp4 * np.log(to4/to3) - r * np.log(po4/po3)
 
-    station[4] = {"Po": po4, "To": to4, "s": s4}
+    #Calcul de la température To4 une fois que l'aire de refroidissement est mixée
+    mpt = mp * (1 - pap) * (1 + f) + mp * pap
+    to4u = ((mp * (1 - pap) * (1 + f)) * to4 * cp4 + mp * pap * to3 * cpc)/ (mpt * cpt)
 
-    return po4, to4, s4
+    station[4] = {"Po": po4, "To": to4u, "s": s4}
 
-def Station_5 (po4, to4, whpc, s4, to3):
-    # Station 5 : Sortie de la turbine haute pression
+    return po4, to4u, s4, mpt
+
+def Station_5 (po4, to4u, whpc, s4, mpt):
+    # Station 5 : Entrée de l'air dans la turbine basse pression
     nthp = cte_turb["nthp"]
     y = cte_turb["yt"]
     cpt = cte_turb["cpt"]
-    mp = cte_comp["mpt"]
-    f = cte_cc["f"]
-    pap = cte_comp["pap"]
-    cpc = cte_comp["cpc"]
-    perte_it = cte_turb["deltapit"]
-
-    mpt = mp * (1 - pap) * (1 + f) + mp * pap
-    to4u = ((mp * (1 - pap) * (1 + f)) * to4 * cpt + mp * pap * to3 * cpc)/ (mpt * cpt)
-
-    po4p = (1 - perte_it) * po4
-
+    
     to5 = to4u-(whpc/(mpt*cpt))
     to5s = to4u - (to4u-to5)/nthp
-    po5 = po4p * (to5s/to4u)**(y/(y-1))
+    po5 = po4 * (to5s/to4u)**(y/(y-1))
 
-    whpt = mpt * cpt * (to4u - to5)
+    whpt = whpc
 
     r = cpt * ((y-1)/y)
 
-    s5 = s4 + cpt * np.log(to5/to4u) - r * np.log(po5/po4p)
+    s5 = s4 + cpt * np.log(to5/to4u) - r * np.log(po5/po4)
 
     station[5] = {"Po": po5, "To": to5, "w": whpt, "s": s5, "mpt": mpt}
 
     return po5, to5, whpt, s5, mpt
 
 def Station_6 (po5, to5, wlpc, s5, mpt):
-    # Station 6 : Sortie de la turbine basse pression
+    # Station 6 : Entrée de l'air dans la power turbine
     ntbp = cte_turb["ntbp"]
     y = cte_turb["yt"]
     cpt = cte_turb["cpt"]
@@ -237,10 +233,13 @@ def Station_7 (po6, to6, s6, mpt):
     f = cte_cc["f"]
     mp = cte_comp["mpt"]
     pap = cte_comp["pap"]
+    perte_it = cte_turb["deltapit"]
+
+    po6p = po6 * (1 - perte_it)
 
     p7 = pa * (1 + perte_et)
 
-    t7s = to6 * (p7/po6)**((y-1)/y)
+    t7s = to6 * (p7/po6p)**((y-1)/y)
     t7 = to6 - (to6-t7s)*ntp
 
     wpt = mpt * cpt * (to6 - t7)
@@ -248,7 +247,7 @@ def Station_7 (po6, to6, s6, mpt):
 
     r = cpt * ((y-1)/y)
 
-    s7 = s6 + cpt * np.log(t7/to6) - r * np.log(p7/po6)
+    s7 = s6 + cpt * np.log(t7/to6) - r * np.log(p7/po6p)
 
     mpcc = mp * (1 - pap)
 
@@ -270,7 +269,7 @@ def print_station():
     print(f"\nSFC: {station[7]['sfc']:.6f} kg/kW.h")
     print(f"Puissance de la turbine de puissance: {station[7]['hp']:.2f} HP")
     print(f"Le nombre d'étages LPC : {station[2]['Nb_etage']:.2f} étages")
-    print(f"Le nombre d'étages HPC : {station[2]['Nb_etage']:.2f} étages")
+    print(f"Le nombre d'étages HPC : {station[3]['Nb_etage']:.2f} étages")
 
 def plot_cycle():
 
@@ -312,8 +311,8 @@ def calcul():
     po1, to1, s1 = Station_1()
     po2, to2, wlpc, s2 = Station_2(po1, to1, s1)
     po3, to3, whpc, s3 = Station_3(po2, to2, s2)
-    po4, to4, s4 = Station_4(po3, to3, s3)
-    po5, to5, whpt, s5, mpt = Station_5(po4, to4, whpc, s4, to3)
+    po4, to4u, s4, mpt = Station_4(po3, to3, s3)
+    po5, to5, whpt, s5, mpt = Station_5(po4, to4u, whpc, s4, mpt)
     po6, to6, wlpt, s6 = Station_6(po5, to5, wlpc, s5, mpt)
     p7, t7, wpt, hp, s7, sfc = Station_7(po6, to6, s6, mpt)
 
