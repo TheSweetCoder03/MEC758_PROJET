@@ -127,7 +127,6 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
         
         rho2 = m_dot / (Va2 * A2)
         P2 = rho2 * R_gaz * T2
-        M2 = V2 / np.sqrt(gamma * R_gaz * T2)
         P02 = P2 * (1 + (gamma - 1) * M2**2 /2)**(gamma / (gamma -1))
         Y_N = (P01 - P02) / (P02 - P2)
 
@@ -145,7 +144,7 @@ def etape_1(donnees_hpt, racine_constante, tolerance=1e-6):
 
         return [rendement - eta_hpt]
 
-    Va2_init = 200 #On pose une valeur de départ pour le solveur
+    Va2_init = 160 #On pose une valeur de départ pour le solveur
     Va2 = fsolve(residual, [Va2_init], xtol=tolerance)[0]
 
     #On ajoute une sécurité qui vérifie que le solveur converge
