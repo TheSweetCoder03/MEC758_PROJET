@@ -796,28 +796,38 @@ def etape_4(donnees_hpt):
     k2 = 55.6
     k3 = -5.2
     k4 = 0.6
-    gamma = donnees_hpt['gamma']
+
+    # Récupération des variables importantes
+    cp = donnees_hpt['cp']
     t = contraintes['vie_heures']
-    T_M = (donnees['T'][2] * (1 + ((gamma - 1) / 2) * (M2_hub**2))) * 1.8
-    an_2 = (donnees['A'][2] * 1550) * donnees['Rpm']**2
-    LM_M = ((k1 + np.log10(t)) / 10**3) * (T_M + 175)
+    vr2 = donnees['Vr'][2]
+
+    Tm = (donnees['T'][2] + (vr2**2 / (2 * cp)))*1.8\
     
-    if LM_M <= 44.33:
-        print('Température trop basse, vie ailette infinie')
+    an_2 = (donnees['A'][2] * 1550) * donnees['Rpm']**2
+    
+    LM_M = ((k1 + np.log10(t)) / 10**3) * (Tm + 175)
+    print(LM_M)
+    
+    if LM_M <= 44.34:
+        Ar_At = 4
+        k5_values = 12.6
+        sigma_c = rho_m * k5_values * (an_2*10**-10)**1.08 
+        print("Température de métal inférieur à 1312 °C")
+
     else:
-        # 2. Calcul de la contrainte admissible sigma_c (KSI) 
+        # 1. Calcul de la contrainte admissible sigma_c (KSI) 
         sigma_c = fsolve(lambda s: k2 + k3 * np.log(s) + k4 * (np.log(s))**2 - LM_M, x0=0.00001)[0] 
 
-        # 3. Calcul du coefficient géométrique K5 nécessaire 
+        # 2. Calcul du coefficient géométrique K5 nécessaire 
         k5_req = sigma_c / (rho_m * (an_2 * 10**-10)**1.08)
 
-        # 4. Identification du ratio Ar/At 
+        # 3. Identification du ratio Ar/At 
         k5_values = np.array([12.60, 11.86, 11.03, 10.68, 9.93, 9.62, 9.40])
         ratio_values = np.array([4, 5, 6, 7, 8, 9, 10])
         Ar_At = np.interp(k5_req, k5_values[::-1], ratio_values[::-1])
-
-        print(f"Contrainte admissible : {sigma_c:.2f} KSI")
-        print(f"Coefficient K5 requis : {k5_req:.2f}")
-        print(f"Ratio Ar/At nécessaire : {Ar_At:.2f}")
+    
+    print(f"Contrainte admissible : {sigma_c:.2f} KSI")
+    print(f"Ratio Ar/At nécessaire : {Ar_At:.2f}")
 
 
