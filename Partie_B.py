@@ -8,7 +8,7 @@ contraintes = {
     # Paramètres de l'étage
     'M1': 0.14,                    # Mach entrée 
     'M3': 0.37,                    # Mach sortie 
-    'alpha_1': -10.0,              # Angle absolu entrée stator 
+    'alpha_1': 10.0,              # Angle absolu entrée stator 
     'alpha_3': -22.0,              # Angle absolu sortie rotor 
     'reaction': 0.63,              # Degré de réaction 
     'AN2_min': 1.6129e7,           # Surface fois vitesse au carré (converti en m^2 RPM) 
@@ -95,7 +95,8 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     pertes_totale = dh0s - dh0
 
     # Thermodynamique de la station 2 (fixée par la réaction)
-    T2 = T3 + (contraintes['reaction'] * dh0) / cp
+    dh = dh0 - (V1**2 - V3**2) / 2
+    T2 = T3 + (contraintes['reaction'] * dh) / cp
     V2 = np.sqrt(2 * cp * (T01 - T2))
     T02 = T01
 
