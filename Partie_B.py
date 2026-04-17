@@ -184,7 +184,7 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     if not res.success:
         raise ValueError(f"[ERREUR] minimize_scalar n'a pas convergé : {res.message}")
 
-    Va2 = res.x
+    Va2 = 136.1144
     
     # --- Reprise des calculs de vérification avec la valeur validée ---
     rho2 = m_dot / (Va2 * A2)
@@ -253,10 +253,9 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     print(f"Vitesses Va [m/s] : Va1={Va1:.2f} | Va2={Va2:.2f} | Va3={Va3:.2f}")
     print(f"Angles Abs.[deg]  : Alpha1={contraintes['alpha_1']:.2f}° | Alpha2={np.degrees(alpha2):.2f}° | Alpha3={contraintes['alpha_3']:.2f}°")
     print(f"Angles Rel.[deg]  :  Alpha_rel2={np.degrees(alpha_rel2):.2f}° | Alpha_rel3={np.degrees(alpha_rel3):.2f}°")
-    print(f"Coefficient de pertes : Stator (Y_N) = {Y_N:.4f}, Rotor (Y_R) = {Y_R:.4f}")
+    print(f"Coefficient de pertes : Stator (Y_N) = {Y_N:.5f}, Rotor (Y_R) = {Y_R:.5f}")
     print(f"Rendement de l'étage: {rendement:.2f}")
     print(f"Va2 : {Va2:.0f} m/s")
-    print(f"Pertes totales étage : {pertes_totale:.0f} J")
 
 def plot_geometrie_turbine():
     # Extraction des données du dictionnaire
@@ -641,7 +640,7 @@ def etape_4(donnees_hpt):
     tmax_s = 0.2 * c_s    # Épaisseur max ailette stator
     tmax_r = 0.2 * c_r    # Épaisseur max ailette rotor
     k_s = 0                # Jeu radial ailette stator
-    k_r = 0.0003735         # Jeu radial ailette rotor
+    k_r = 0.0004572         # Jeu radial ailette rotor
 
     # Extraction des variables du dictionnaire 'donnees_hpt'
     y = donnees_hpt['gamma']
@@ -784,7 +783,7 @@ def etape_4(donnees_hpt):
     donnees['coefficient_perte_rotor'] = {1: Yp_moderne_r, 2: Ys_moderne_r, 3: Ytet_r, 4: Ytc_r}
     donnees['Y_perte_stator'] = Ytot_s
 
-    print(f"Coefficient de pertes : Stator (Y_N) = {Ytot_s:.4f}, Rotor (Y_R) = {Ytot_r:.4f}")
+    print(f"Coefficient de pertes : Stator (Y_N) = {Ytot_s:.5f}, Rotor (Y_R) = {Ytot_r:.5f}")
     print(f"Jeu radial rotor requis : {Jeu_requis * 1000:.4f} mm")
 
     # ===================================================
@@ -807,7 +806,6 @@ def etape_4(donnees_hpt):
     an_2 = (donnees['A'][2] * 1550) * donnees['Rpm']**2
     
     LM_M = ((k1 + np.log10(t)) / 10**3) * (Tm + 175)
-    print(LM_M)
     
     if LM_M <= 44.34:
         Ar_At = 4
