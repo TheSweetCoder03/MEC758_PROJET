@@ -19,12 +19,10 @@ def partie_c():
     print(f"RPM hors-concept.: {rpm_hc:.0f} RPM (-20%)")
 
     # --- Géométrie figée (point de conception) ---
-    r_m1 = Partie_B.donnees['r_m'][1]
     r_m2 = Partie_B.donnees['r_m'][2]
     r_m3 = Partie_B.donnees['r_m'][3]
 
     # --- Vitesses de l'aubage hors-conception ---
-    U1_hc = omega_hc * r_m1
     U2_hc = omega_hc * r_m2
     U3_hc = omega_hc * r_m3
 
@@ -39,7 +37,7 @@ def partie_c():
 
     # --- Nouveaux triangles relatifs ---
     Vru2_hc = Vu2 - U2_hc
-    Vru3_hc = Vu3 - U3_hc
+    Vru3_hc = U3_hc - Vu3
     Vr2_hc  = np.sqrt(Va2**2 + Vru2_hc**2)
     Vr3_hc  = np.sqrt(Va3**2 + Vru3_hc**2)
 
@@ -54,7 +52,7 @@ def partie_c():
     print(f"U2 hors-concept. : {U2_hc:.2f} m/s")
     print(f"U3 design        : {Partie_B.donnees['U'][2]:.2f} m/s")
     print(f"U3 hors-concept. : {U3_hc:.2f} m/s")
-    print(f"\nAngle relatif α_rel2 design      : {np.degrees(alpha_rel2_design):.2f}°")
+    print(f"\nAngle de métal beta2 de design      : {np.degrees(alpha_rel2_design):.2f}°")
     print(f"Angle relatif α_rel2 hors-concept: {np.degrees(alpha_rel2_hc):.2f}°")
     print(f"Incidence sur le rotor (i)       : {incidence:.2f}°")
 
@@ -62,7 +60,7 @@ def partie_c():
     donnees_hc['alpha']        = {1: a1}
     donnees_hc['rpm']          = rpm_hc
     donnees_hc['omega']        = omega_hc
-    donnees_hc['U']            = {1: U1_hc, 2: U2_hc, 3: U3_hc}
+    donnees_hc['U']            = {2: U2_hc, 3: U3_hc}
     donnees_hc['Va']           = {1: Va1,   2: Va2,   3: Va3}
     donnees_hc['Vu']           = {1: Vu2,   2: Vu3}
     donnees_hc['Vru']          = {2: Vru2_hc, 3: Vru3_hc}
@@ -73,8 +71,8 @@ def partie_c():
 def tracer_triangles_vitesses():
     a1 = donnees_hc['alpha'][1]
     # 1. Extraction des variables du dictionnaire 'vitesses' (qui doit être global ici)
-    U2 = donnees_hc['U'][1]
-    U3 = donnees_hc['U'][2]
+    U2 = donnees_hc['U'][2]
+    U3 = donnees_hc['U'][3]
     
     Va1 = donnees_hc['Va'][1]
     Va2 = donnees_hc['Va'][2]
@@ -145,10 +143,12 @@ def pertes_incidence():
     alpha_1_des = Partie_B.donnees['alpha_relatif'][2]
     alpha_1_des_deg = np.degrees(alpha_1_des)
     incidence_deg = donnees_hc['incidence']
-    d_c = 0.032 # Ratio - Leading eadge Diameter / Chord
-    s_c = 0.56 # Ratio - Pitch / Chord
-    beta_1 = Partie_B.donnees['alpha'][1] 
-    beta_2 = Partie_B.donnees['alpha_relatif'][2]
+    d_c = 0.053 # Ratio - Leading eadge Diameter / Chord
+    s_c = 0.75 # Ratio - Pitch / Chord
+    beta_1 = Partie_B.donnees['alpha_relatif'][2]
+    beta_1_deg = np.degrees(beta_1) 
+    beta_2 = Partie_B.donnees['alpha_relatif'][3]
+    beta_2_deg = np.degrees(beta_2) 
     Yp_des = Partie_B.donnees['coefficient_perte_rotor'][1] # Coefficient de pertes de profil de AMDC on design du rotor
     Ys_des = Partie_B.donnees['coefficient_perte_rotor'][2] # Coefficient de pertes secondaire de AMDC on design du rotor
     Ytet_r = Partie_B.donnees['coefficient_perte_rotor'][3] # Coefficient de pertes traling edge de AMDC on design du rotor
@@ -162,16 +162,16 @@ def pertes_incidence():
     x_p = (d_s**-1.6)*(ratio_cos_beta**-2)*(alpha_1_deg - alpha_1_des_deg)
 
     if x_p > 0 :
-        d_phi = 0.778 * (10**-5) * x_p + 0.56 * (10**-7) * (x_p**2) + 0.4 * (10**-10) * (x_p**3) + 2.054 * (10**-19) * (x_p**6)
+        d_phi = 0.778e-5 * x_p + 0.56e-7 * (x_p**2) + 0.4e-10 * (x_p**3) + 2.054e-19 * (x_p**6)
     else :
-        d_phi = -5.1734 * (10**-6) * x_p + 7.6902 * (10**-9) * (x_p**2 )
+        d_phi = -5.1734e-6 * x_p + 7.6902e-9 * (x_p**2 )
     
     Yp_r = Yp_des + d_phi
 
     # ---------------------------------
     # Calcul pour les pertes secondaires
     # ----------------------------------
-    x_et = (incidence_deg / (180 - (beta_1 + beta_2))) * (ratio_cos_beta**-1.5) * (d_c**-0.3)
+    x_et = (incidence_deg / (180 - (beta_1_deg + beta_2_deg))) * (ratio_cos_beta**-1.5) * (d_c**-0.3)
 
     if x_et > 0: 
         ratio_perte_sec = np.exp(0.9 * x_et) + 13 * (x_et**2) + 400 * (x_et**4)
@@ -185,9 +185,10 @@ def pertes_incidence():
     donnees_hc['Y_rotor']= Y_rotor
 
     print(f"\nLes pertes de profil d'incidence sont de : {Yp_r:.2f}")
-    print(f"Le delta_phi pour profil est de : {d_phi:.2f}")
+    print(f"Le delta_phi pour profil est de : {d_phi:.4f}")
     print(f"Les pertes secondaires d'incidence sont de : {Ys_r:.2f}")
     print(f"Le ratio de perte pour secondaire est de : {ratio_perte_sec:.2f}")
+    print(f"Les pertes totales au rotor (Y_R) sont : {Y_rotor:.4f}")
 
 def rendement_incidence(donnees_hpt):
     #Calcul du rendement de l'étage avec la réduction du RPM (et donc les pertes d'incidences)
@@ -199,11 +200,13 @@ def rendement_incidence(donnees_hpt):
     T3 = Partie_B.donnees['T'][3]
     R_gaz = Partie_B.donnees['R_gaz']
     gamma = donnees_hpt['gamma']
-    Vu2 = donnees_hc['Vu'][2]
+    U2_hc = donnees_hc['U'][2]
+    U3_hc = donnees_hc['U'][3]
+    Vu2 = donnees_hc['Vu'][1]
+    Vu3 = donnees_hc['Vu'][2]
     Va2 = donnees_hc['Va'][2]
     Vr3 = donnees_hc['Vr'][3]
     T01 = Partie_B.donnees['To'][1]
-    T03 = Partie_B.donnees['To'][3]
     cp = donnees_hpt['cp']
     Y_rotor = donnees_hc['Y_rotor']
     Y_stator = Partie_B.donnees['Y_perte_stator']
@@ -219,9 +222,14 @@ def rendement_incidence(donnees_hpt):
     Mr3 = Vr3 / np.sqrt(gamma * R_gaz * T3)
     lambda_rotor = Y_rotor / (1 + 0.5 * gamma * Mr3**2)
 
-    rendement = 1 / (1 + (lambda_stator * V2**2 + lambda_rotor * Vr3**2) / (2 * cp * (T01 - T03)))
+    #On calcul le nouveau T03 pour prendre en compte la diminution du travail d'Euler
+    w_hc = U2_hc * Vu2 - U3_hc * Vu3
+    T03_hc = T01 - w_hc / cp
 
-    print(f"\nLe rendement de l'étage est de : {rendement:.2f}")
+
+    rendement = 1 / (1 + (lambda_stator * V2**2 + lambda_rotor * Vr3**2) / (2 * cp * (T01 - T03_hc)))
+
+    print(f"\nLe rendement de l'étage est de : {rendement:.4f}")
 
     
 
