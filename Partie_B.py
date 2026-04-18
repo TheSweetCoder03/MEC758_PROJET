@@ -638,8 +638,8 @@ def etape_4(donnees_hpt):
 
     # Paramètres de conception
     nbre_seal = 3 # Nombre de seal au bout ailette
-    tmax_s = 0.2 * c_s    # Épaisseur max ailette stator
-    tmax_r = 0.2 * c_r    # Épaisseur max ailette rotor
+    tmax_c_s = 0.2    # Ratio Épaisseur max ailette sur corde  stator
+    tmax_c_r = 0.2    # Ratio Épaisseur max ailette sur corde rotor
     k_s = 0                # Jeu radial ailette stator
     k_r = 0.0003735         # Jeu radial ailette rotor
 
@@ -659,7 +659,7 @@ def etape_4(donnees_hpt):
     Yp_2_s = Tableau.extraire_donnee_graphique(x=(pas_s/c_s), y=abs(np.degrees(alpha_2)), figure=2)
 
     # Perte du profil (Yp) -
-    Yp_AMDC_s = (Yp_1_s + abs(beta_1/alpha_2)*(beta_1/alpha_2) * (Yp_2_s - Yp_1_s)) * ((tmax_s / c_s) / 0.2)**(beta_1/alpha_2)
+    Yp_AMDC_s = (Yp_1_s + abs(beta_1/alpha_2)*(beta_1/alpha_2) * (Yp_2_s - Yp_1_s)) * ((tmax_c_s) / 0.2)**(beta_1/alpha_2)
 
     k1_s = 1 - 1.25 * abs(M2 - 0.2) if M2 > 0.2 else 1
     k2_s = abs(M1 / M2)**2
@@ -713,7 +713,7 @@ def etape_4(donnees_hpt):
     Yp_2_r = Tableau.extraire_donnee_graphique(x=(pas_r/c_r), y=abs(np.degrees(beta_3)), figure=2)
 
     # Perte du profil (Yp)
-    Yp_AMDC_r = (Yp_1_r + abs(beta_2 / beta_3) * (beta_2 / beta_3) * (Yp_2_r - Yp_1_r)) * ((tmax_r / c_r) / 0.2)**(beta_2 / beta_3)
+    Yp_AMDC_r = (Yp_1_r + abs(beta_2 / beta_3) * (beta_2 / beta_3) * (Yp_2_r - Yp_1_r)) * ((tmax_c_r) / 0.2)**(beta_2 / beta_3)
 
     k1_r = 1 - 1.25 * abs(Mr3 - 0.2) if Mr3 > 0.2 else 1
     k2_r = abs(Mr2 / Mr3)**2
