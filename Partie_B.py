@@ -801,7 +801,7 @@ def etape_4(donnees_hpt):
     t = contraintes['vie_heures']
     vr2 = donnees['Vr'][2]
 
-    Tm = (donnees['T'][2] + (vr2**2 / (2 * cp)))*1.8\
+    Tm = (donnees['T'][2] + (vr2**2 / (2 * cp)))*1.8
     
     an_2 = (donnees['A'][2] * 1550) * donnees['Rpm']**2
     
