@@ -13,7 +13,7 @@ def main():
     Partie_B.etape_1(donnees_hpt)
     Partie_B.plot_geometrie_turbine()
     #Partie_B.tracer_limites_rpm()
-    Partie_B.tracer_triangles_vitesses()
+    #Partie_B.tracer_triangles_vitesses()
     Partie_B.etape_2(donnees_hpt)
     #Partie_B.etape_2_graphique()
     Partie_B.etape_3(donnees_hpt)

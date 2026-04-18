@@ -8,7 +8,7 @@ contraintes = {
     # Paramètres de l'étage
     'M1': 0.14,                    # Mach entrée 
     'M3': 0.37,                    # Mach sortie 
-    'alpha_1': 10.0,              # Angle absolu entrée stator 
+    'alpha_1': -10.0,              # Angle absolu entrée stator 
     'alpha_3': -22.0,              # Angle absolu sortie rotor 
     'reaction': 0.63,              # Degré de réaction 
     'AN2_min': 1.6129e7,           # Surface fois vitesse au carré (converti en m^2 RPM) 
