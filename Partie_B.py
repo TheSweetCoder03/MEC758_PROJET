@@ -640,7 +640,7 @@ def etape_4(donnees_hpt):
     tmax_c_s = 0.2    # Ratio Épaisseur max ailette sur corde  stator
     tmax_c_r = 0.2    # Ratio Épaisseur max ailette sur corde rotor
     k_s = 0                # Jeu radial ailette stator
-    k_r = 0.0004572         # Jeu radial ailette rotor
+    k_r = 0.0005188         # Jeu radial ailette rotor, à ajuster une fois que le jeu nécessaire est trouvé, pour atteindre le même coefficient de perte au rotor
 
     # Extraction des variables du dictionnaire 'donnees_hpt'
     y = donnees_hpt['gamma']
