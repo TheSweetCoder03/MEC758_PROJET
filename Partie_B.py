@@ -74,6 +74,12 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     r_m3 = (r_root3 + r_tip3) / 2.0
     U3 = omega * r_m3
 
+    Vru3 = U3 - Vu3
+    alpha_rel3 = np.arctan(Vru3 / Va3)
+    Vr3 = np.sqrt(Va3**2 + Vru3**2)
+    Mr3 = Vr3 / np.sqrt(gamma * R_gaz * T3)
+    P0r3 = P3 * (1 + ((gamma -1)/2) * Mr3**2)**(gamma / (gamma -1))
+
     # Station 1 (Entrée Stator) 
     M1 = contraintes['M1']
     T1 = T01 / (1 + ((gamma - 1) / 2) * M1**2)
@@ -100,16 +106,10 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     V2 = np.sqrt(2 * cp * (T01 - T2))
     T02 = T01
 
-    # Station 3
-    Vru3 = U3 - Vu3
-    alpha_rel3 = np.arctan(Vru3 / Va3)
-    Vr3 = np.sqrt(Va3**2 + Vru3**2)
-    Mr3 = Vr3 / np.sqrt(gamma * R_gaz * T3)
-    P0r3 = P3 * (1 + ((gamma -1)/2) * Mr3**2)**(gamma / (gamma -1))
-
     M2 = V2 / np.sqrt(gamma * R_gaz * T2)
 
     A2 = A3
+    
     def tracer_diagnostic_va2(v_min=50, v_max=350):
         print(f"Génération du graphique de diagnostic...")
         v_test = np.linspace(v_min, v_max, 100)
