@@ -184,7 +184,7 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     if not res.success:
         raise ValueError(f"[ERREUR] minimize_scalar n'a pas convergé : {res.message}")
 
-    Va2 = 136.1144
+    Va2 = res.x
     
     # --- Reprise des calculs de vérification avec la valeur validée ---
     rho2 = m_dot / (Va2 * A2)
