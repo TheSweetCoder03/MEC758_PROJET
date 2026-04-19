@@ -349,6 +349,20 @@ def plot_cycle_enhanced():
     plt.tight_layout()
     plt.show()
 
+def print_station():
+    print(f"{'Station':<10} | {'Po (Pa)':<10} | {'To (K)':<10} | {'W (Watts)':<10}")
+    print("-" * 34)
+    for i in range(1, 8):
+        if i in station:
+            if 'w' in station[i]:
+                print(f"{i:<10} | {station[i]['Po']:<10.2f} | {station[i]['To']:<10.2f} | {station[i]['w']:<10.2f}")
+            else:
+                print(f"{i:<10} | {station[i]['Po']:<10.2f} | {station[i]['To']:<10.2f} | {'N/A':<10}")
+    print(f"\nSFC: {station[7]['sfc']:.6f} kg/kW.h")
+    print(f"Puissance de la turbine de puissance: {station[7]['hp']:.2f} HP")
+    print(f"Le nombre d'étages LPC : {station[2]['Nb_etage']:.2f} étages")
+    print(f"Le nombre d'étages HPC : {station[3]['Nb_etage']:.2f} étages")
+
 # Exécution du script mis à jour
 def calcul():
     po1, to1, s1 = Station_1()
@@ -359,4 +373,19 @@ def calcul():
     po6, to6, wlpt, s6 = Station_6(po5, to5, wlpc, s5, mpt)
     p7, t7, wpt, hp, s7, sfc = Station_7(po6, to6, s6, mpt)
 
-    plot_cycle_enhanced()
+def export_donnees_hpt():
+    mpt_calc = station[5]['mpt']
+    donnees_hpt = {
+        'T04': station[4]['To'],                  
+        'P04': station[4]['Po'],                  
+        'T05': station[5]['To'],                  
+        'P05': station[5]['Po'],                  
+        'm_dot': mpt_calc,                
+        'W_hpt': station[5]['w'],              
+        'cp': cte_turb["cpt"],      
+        'gamma': cte_turb["yt"],    
+        'eta_iso': cte_turb["nthp"],  
+        'dh0_hpt': station[5]['w'] / mpt_calc, # Travail spécifique (J/kg)
+        'rpmhpc': cte_comp["rpmhpc"]
+        }
+    return donnees_hpt
