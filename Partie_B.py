@@ -250,12 +250,16 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     donnees['R_gaz'] = R_gaz
 
     print(f"Régime : {rpm:.0f} RPM")
+    print(f"Rayons à l'emplanture: Rr1={r_root1:.3f} | Rr2={r_root2:.3f} | Rr3={r_root3:.3f}")
+    print(f"Rayons à l'extréminté: Rt1={r_tip1:.3f} | Rt2={r_tip2:.3f} | Rt3={r_tip3:.3f}")
+    print(f"Rayons moyen: Rm1={r_m1:.3f} | Rm2={r_m2:.3f} | Rm3={r_m3:.3f}")
     print(f"Vitesses Va [m/s] : Va1={Va1:.2f} | Va2={Va2:.2f} | Va3={Va3:.2f}")
+    print(f"Vitesses V [m/s] : V1={V1:.2f} | V2={V2:.2f} | V3={V3:.2f}")
     print(f"Angles Abs.[deg]  : Alpha1={contraintes['alpha_1']:.2f}° | Alpha2={np.degrees(alpha2):.2f}° | Alpha3={contraintes['alpha_3']:.2f}°")
     print(f"Angles Rel.[deg]  :  Alpha_rel2={np.degrees(alpha_rel2):.2f}° | Alpha_rel3={np.degrees(alpha_rel3):.2f}°")
     print(f"Coefficient de pertes : Stator (Y_N) = {Y_N:.5f}, Rotor (Y_R) = {Y_R:.5f}")
-    print(f"Rendement de l'étage: {rendement:.2f}")
-    print(f"Va2 : {Va2:.0f} m/s")
+    print(f"Rendement de l'étage: {rendement:.4f}")
+    print(f"Va2 : {Va2:.3f} m/s")
 
 def plot_geometrie_turbine():
     # Extraction des données du dictionnaire
@@ -703,6 +707,8 @@ def etape_4(donnees_hpt):
 
     Ytot_s = Yp_moderne_s * f_re_s + Ys_moderne_s + Ytet_s + Ytc_s
 
+    print(f"Coeff de pertes stator: Yp={Yp_moderne_s:.3f} | Fre={f_re_s:.3f} | Ys={Ys_moderne_s:.3f} | Ytet={Ytet_s:.3f} | Ytc={Ytc_s:.3f} | Re={Re_s:.3f}")
+
 
     # ===================================
     # PERTE DANS LE ROTOR (Station 2 à 3)
@@ -766,7 +772,9 @@ def etape_4(donnees_hpt):
     else:
         f_re_r = (Re_r / 1000000)**-0.2
 
-    Ytot_r = Yp_moderne_r * f_re_r + Ys_moderne_r + Ytet_r + Ytc_r  
+    Ytot_r = Yp_moderne_r * f_re_r + Ys_moderne_r + Ytet_r + Ytc_r
+
+    print(f"Coeff de pertes rotor: Yp={Yp_moderne_r:.3f} | Fre={f_re_r:.3f} | Ys={Ys_moderne_r:.3f} | Ytet={Ytet_r:.3f} | Ytc={Ytc_r:.3f} | Re={Re_r:.3f}")  
 
     # ==========================
     # 4.b : Trouver le jeu rotor 
@@ -817,7 +825,7 @@ def etape_4(donnees_hpt):
     if LM_M <= 44.34:
         Ar_At = 4
         k5_values = 12.6
-        sigma_c = rho_m * k5_values * (an_2*10**-10)**1.08 
+        sigma_c = rho_m * k5_values * (an_2*10**-10)**1.08
         print("Température de métal inférieur à 1312 °C")
 
     else:
@@ -833,6 +841,8 @@ def etape_4(donnees_hpt):
         Ar_At = np.interp(k5_req, k5_values[::-1], ratio_values[::-1])
     
     print(f"Contrainte admissible : {sigma_c:.2f} KSI")
+    print(f"Température du métal de l'aube : {Tm:.2f}")
+    print(f"Durée de vie maximale LM_m : {LM_M:.2f}")
     print(f"Ratio Ar/At nécessaire : {Ar_At:.2f}")
 
 
