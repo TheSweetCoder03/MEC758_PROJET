@@ -645,10 +645,6 @@ def etape_4(donnees_hpt):
     # Extraction des variables du dictionnaire 'donnees_hpt'
     y = donnees_hpt['gamma']
 
-    # Constantes graphiques globales Kacker-Okapuu
-    d_tet_0 = Tableau.extraire_donnee_graphique(x=0.12, y=None, figure=140)
-    d_tet_alpha = Tableau.extraire_donnee_graphique(x=0.12, y=None, figure=141)
-
     # ====================================
     # PERTE DANS LE STATOR (Station 1 à 2)
     # ====================================
@@ -683,8 +679,13 @@ def etape_4(donnees_hpt):
     
     Ys_moderne_s = 1.2 * Ys_AMDC_s * ks_s
 
+    # 2. Extraction des données spécifiques au stator
+    ratio_te_s = contraintes['stator_te_thick'] / pas_s
+    d_tet_0_s = Tableau.extraire_donnee_graphique(x=ratio_te_s, y=None, figure=140)
+    d_tet_alpha_s = Tableau.extraire_donnee_graphique(x=ratio_te_s, y=None, figure=141)
+
     # Perte annulaire (Ytet)
-    d_tet_s = d_tet_0 + abs(beta_1 / alpha_2) * (beta_1 / alpha_2) * (d_tet_alpha - d_tet_0) 
+    d_tet_s = d_tet_0_s + abs(beta_1 / alpha_2) * (beta_1 / alpha_2) * (d_tet_alpha_s - d_tet_0_s) 
     denom_s = 1 - (1 + (y - 1) / 2 * M2**2)**(-y / (y - 1))
     Ytet_s = ((1 - (y - 1) / 2 * M2**2 * (1 / (1 - d_tet_s) - 1))**(-y / (y - 1)) - 1) / denom_s
 
@@ -742,8 +743,14 @@ def etape_4(donnees_hpt):
     
     Ys_moderne_r = 1.2 * Ys_AMDC_r * ks_r
 
+    # 1. Calcul du ratio d'épaisseur pour le rotor
+    ratio_te_r = contraintes['rotor_te_thick'] / pas_r
+
+    d_tet_0_r = Tableau.extraire_donnee_graphique(x=ratio_te_r, y=None, figure=140)
+    d_tet_alpha_r = Tableau.extraire_donnee_graphique(x=ratio_te_r, y=None, figure=141)
+
     # Perte annulaire (Ytet)
-    d_tet_r = d_tet_0 + abs(beta_2 / beta_3) * (beta_2 / beta_3) * (d_tet_alpha - d_tet_0)
+    d_tet_r = d_tet_0_r + abs(beta_2 / beta_3) * (beta_2 / beta_3) * (d_tet_alpha_r - d_tet_0_r)
     denom_r = 1 - (1 + (y - 1) / 2 * Mr3**2)**(-y / (y - 1))
     Ytet_r = ((1 - (y - 1) / 2 * Mr3**2 * (1 / (1 - d_tet_r) - 1))**(-y / (y - 1)) - 1) / denom_r
 
