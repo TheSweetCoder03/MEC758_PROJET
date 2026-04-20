@@ -349,6 +349,32 @@ def plot_cycle_enhanced():
     plt.tight_layout()
     plt.show()
 
+def verifier_etranglement(nom_turbine, po_in, to_in, po_out, m_dot, cp, y):
+    """
+    Vérifie si la turbine est étranglée (choked) et calcule la section au col (A*).
+    """
+    R = cp * (y - 1) / y
+    
+    pr_crit = ((y + 1) / 2) ** (y / (y - 1))
+    
+    pr_reel = po_in / po_out
+    
+    # La turbine est étranglée si le rapport de pression réel dépasse le critique
+    est_etrangle = pr_reel >= pr_crit
+    
+    # Calcul des propriétés au col (Mach = 1) pour déterminer la section critique A*
+    T_star = to_in * (2 / (y + 1))
+    P_star = po_in * (2 / (y + 1)) ** (y / (y - 1))
+    
+    rho_star = P_star / (R * T_star)
+    V_star = np.sqrt(y * R * T_star) # Vitesse du son locale
+    
+    A_col = m_dot / (rho_star * V_star) # Section au col en m^2
+    
+    print(f"{nom_turbine:<30} | PR Réel: {pr_reel:<5.2f} | PR Crit: {pr_crit:<5.2f} | État: {'ÉTRANGLÉ' if est_etrangle else 'NON ÉTRANGLÉ':<12} | Section col A*: {A_col*10000:.2f} cm²")
+    
+    return est_etrangle, A_col
+
 def print_station():
     print(f"{'Station':<10} | {'Po (Pa)':<10} | {'To (K)':<10} | {'W (Watts)':<10}")
     print("-" * 34)
@@ -372,6 +398,14 @@ def calcul():
     po5, to5, whpt, s5, mpt = Station_5(po4, to4u, whpc, s4, mpt)
     po6, to6, wlpt, s6 = Station_6(po5, to5, wlpc, s5, mpt)
     p7, t7, wpt, hp, s7, sfc = Station_7(po6, to6, s6, mpt)
+    print("ANALYSE D'ÉTRANGLEMENT DES TURBINES (CHOKING)")
+    # Turbine Haute Pression (HPT) : Station 4 vers Station 5
+    verifier_etranglement("Turbine Haute Pression (HPT)", po4, to4u, po5, mpt, cte_turb["cpt"], cte_turb["yt"])
+    # Turbine Basse Pression (LPT) : Station 5p vers Station 6
+    verifier_etranglement("Turbine Basse Pression (LPT)", station["5p"]["Po"], station["5p"]["To"], po6, mpt, cte_turb["cpt"], cte_turb["yt"])
+    # Turbine de Puissance (PT) : Station 6p vers Station 7
+    verifier_etranglement("Turbine de Puissance (PT)", station["6p"]["Po"], station["6p"]["To"], p7, mpt, cte_turb["cpt"], cte_turb["yt"])
+    print("="*80 + "\n")
 
 def export_donnees_hpt():
     mpt_calc = station[5]['mpt']
