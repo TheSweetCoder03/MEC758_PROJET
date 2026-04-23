@@ -204,10 +204,11 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     lambda_R = Y_R / (1 + 0.5 * gamma * Mr3**2)
     rendement = 1 / (1 + (lambda_N * V2**2 + lambda_R * Vr3**2) / (2 * cp * (T01 - T03)))
 
-    #Calcul dimensions ailette à station 2
+    # Calcul dimensions ailette à station 2
     r_m2 = U2 / omega
-    r_root2 = r_root3
-    r_tip2 = r_m2 * 2 - r_root2
+    h2 = A2 / (2 * np.pi * r_m2)
+    r_root2 = r_m2 - (h2 / 2)
+    r_tip2 = r_m2 + (h2 / 2)
 
     # CALCUL DES ANGLES (ABSOLUS ET RELATIFS)
 
