@@ -215,7 +215,8 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     alpha2 = np.arctan(Vu2 / Va2)
     alpha_rel2 = np.arctan(Vru2 / Va2)
 
-    coeff_perte_temp = (2 * Va2 / U2) * (np.tan(alpha_rel2) + np.tan(alpha_rel3))
+    coeff_perte_temp = (2 / U2**2) * (U2 * (U2 - Va2 * np.tan(alpha_rel2)) - U3 * (U3 - Va3 * np.tan(alpha_rel3)))
+    coeff_ecoulement = (Va2 + Va3) / (2 * U3)
 
     # Viscosité stator/rotor
     Visc_s = mu0 * (T2 / T0_suth)**1.5 * (T0_suth + S) / (T2 + S)
@@ -258,8 +259,10 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     print(f"Angles Abs.[deg]  : Alpha1={contraintes['alpha_1']:.2f}° | Alpha2={np.degrees(alpha2):.2f}° | Alpha3={contraintes['alpha_3']:.2f}°")
     print(f"Angles Rel.[deg]  :  Alpha_rel2={np.degrees(alpha_rel2):.2f}° | Alpha_rel3={np.degrees(alpha_rel3):.2f}°")
     print(f"Coefficient de pertes : Stator (Y_N) = {Y_N:.5f}, Rotor (Y_R) = {Y_R:.5f}")
+    print(f"Coefficient de charge : {coeff_perte_temp:.3f}")
+    print(f"Coefficient d'écoulement : {coeff_ecoulement:.3f}")
     print(f"Rendement de l'étage: {rendement:.4f}")
-    print(f"Va2 : {Va2:.3f} m/s")
+    print(f"Mr3 : {Mr3:.3f}")
 
 def plot_geometrie_turbine():
     # Extraction des données du dictionnaire
