@@ -440,6 +440,7 @@ def etape_2(donnees_hpt):
     To_1 = donnees['To'][1]
     To_2 = donnees['To'][2]
     To_3 = donnees['To'][3]
+    omega = donnees['omega']
     
     cp = donnees_hpt['cp']
     gamma = donnees_hpt['gamma']
@@ -470,7 +471,11 @@ def etape_2(donnees_hpt):
         V = np.sqrt(j[7]**2 + Vu**2)
         T = j[8] - V**2 / (2*cp)
         P = (((j[9]**2)*j[4])/2) * (1/j[1]**2 - 1/r**2) + j[2]
-        alpha = np.degrees(np.arctan(j[11] / r))
+        if idx == 2 or idx == 3:
+            u = r * omega
+            alpha = np.degrees(np.arctan((Vu - u) / j[7]))
+        else:
+            alpha = np.degrees(np.arctan(j[11] / r))
         a = np.sqrt(gamma * R_gaz * T)
         M = V / a
         
