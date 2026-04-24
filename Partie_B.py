@@ -88,6 +88,7 @@ def etape_1(donnees_hpt, tolerance=1e-6):
 
     V1 = M1 * np.sqrt(gamma * R_gaz * T1)
     Va1 = V1 * np.cos(deg2rad(contraintes['alpha_1']))
+    Vu1 = V1 * np.sin(deg2rad(contraintes['alpha_1']))
 
     A1 = m_dot / (rho1 * Va1)
     r_tip1 = r_tip3
@@ -243,7 +244,7 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     donnees['omega'] = omega
     donnees['U'] = {1: U2, 2: U3}
     donnees['Va'] = {1: Va1, 2: Va2, 3: Va3}
-    donnees['Vu'] = {1: Vu2, 2: Vu3}
+    donnees['Vu'] = {1: Vu2, 2: Vu3, 3: Vu1}
     donnees['Vr'] = {2: Vr2, 3: Vr3}
 
     donnees['Y'] = {1: Y_N, 2: Y_R}
@@ -417,6 +418,7 @@ def etape_2(donnees_hpt):
     print(f"\nÉTAPES 2.a, b, c : Répartition des triangles de vitesse")
 
     # Valeurs lues depuis les dictionnaires globaux 'donnees' et 'contraintes'
+    Vu_1 = donnees['Vu'][3]
     Vu_2 = donnees['Vu'][1]
     Vu_3 = donnees['Vu'][2]
     rm_1 = donnees['r_m'][1]
@@ -457,7 +459,7 @@ def etape_2(donnees_hpt):
     n = -1
 
     # Trouver les constantes à chaque station
-    stat_1 = [0, rm_1, Pm_1, alpham_1, pm_1, rr_1, rt_1, Va_1, To_1]
+    stat_1 = [Vu_1, rm_1, Pm_1, alpham_1, pm_1, rr_1, rt_1, Va_1, To_1]
     stat_2 = [Vu_2, rm_2, Pm_2, alpham_2, pm_2, rr_2, rt_2, Va_2, To_2]
     stat_3 = [Vu_3, rm_3, Pm_3, alpham_3, pm_3, rr_3, rt_3, Va_3, To_3]
     
@@ -471,15 +473,19 @@ def etape_2(donnees_hpt):
     for idx, j in enumerate([stat_1, stat_2, stat_3], start=1):
         r = np.linspace(j[5], j[6], 100)
         f_t = 1 - j[10] / r**2
-        Vu = j[9] / r
+        if idx == 1:
+            Vu = np.full_like(r, j[0])
+            P = np.full_like(r, j[2])
+        else:
+            Vu = j[9] / r
+            P = (((j[9]**2)*j[4])/2) * (1/j[1]**2 - 1/r**2) + j[2]
         V = np.sqrt(j[7]**2 + Vu**2)
         T = j[8] - V**2 / (2*cp)
-        P = (((j[9]**2)*j[4])/2) * (1/j[1]**2 - 1/r**2) + j[2]
         if idx == 2 or idx == 3:
             u = r * omega
             alpha = np.degrees(np.arctan((Vu - u) / j[7]))
         else:
-            alpha = np.degrees(np.arctan(j[11] / r))
+            alpha = np.full_like(r, np.degrees(j[3]))
         a = np.sqrt(gamma * R_gaz * T)
         M = V / a
         
