@@ -33,16 +33,16 @@ def partie_c():
     Va2 = Partie_B.donnees['Va'][2]
     Va3 = Partie_B.donnees['Va'][3]
     Vu2 = Partie_B.donnees['Vu'][1]
-    Vu3 = Partie_B.donnees['Vu'][2]
+    alpha_rel3_hc = Partie_B.donnees['alpha_relatif'][3]
+    Vru3_hc = Partie_B.donnees['Vru'][3]
+    Vr3_hc = Partie_B.donnees['Vr'][3]
 
     # --- Nouveaux triangles relatifs ---
     Vru2_hc = Vu2 - U2_hc
-    Vru3_hc = U3_hc - Vu3
     Vr2_hc  = np.sqrt(Va2**2 + Vru2_hc**2)
-    Vr3_hc  = np.sqrt(Va3**2 + Vru3_hc**2)
+    Vu3_hc = U3_hc - Vru3_hc
 
     alpha_rel2_hc = np.arctan(Vru2_hc / Va2)
-    alpha_rel3_hc = np.arctan(Vru3_hc / Va3)
 
     # --- Incidence sur le rotor (entrée) ---
     alpha_rel2_design = Partie_B.donnees['alpha_relatif'][2]
@@ -62,7 +62,7 @@ def partie_c():
     donnees_hc['omega']        = omega_hc
     donnees_hc['U']            = {2: U2_hc, 3: U3_hc}
     donnees_hc['Va']           = {1: Va1,   2: Va2,   3: Va3}
-    donnees_hc['Vu']           = {1: Vu2,   2: Vu3}
+    donnees_hc['Vu']           = {1: Vu2,   2: Vu3_hc}
     donnees_hc['Vru']          = {2: Vru2_hc, 3: Vru3_hc}
     donnees_hc['Vr']           = {2: Vr2_hc,  3: Vr3_hc}
     donnees_hc['alpha_relatif']= {2: alpha_rel2_hc, 3: alpha_rel3_hc}

@@ -246,6 +246,7 @@ def etape_1(donnees_hpt, tolerance=1e-6):
     donnees['Va'] = {1: Va1, 2: Va2, 3: Va3}
     donnees['Vu'] = {1: Vu2, 2: Vu3, 3: Vu1}
     donnees['Vr'] = {2: Vr2, 3: Vr3}
+    donnees['Vru'] = {2: Vru2, 3: Vru3}
 
     donnees['Y'] = {1: Y_N, 2: Y_R}
     donnees['nst'] = rendement
